@@ -56,6 +56,8 @@ import org.keycloak.protocol.oidc.grants.ciba.endpoints.ClientNotificationEndpoi
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.JsonWebToken;
 import org.keycloak.services.ErrorResponseException;
+import org.keycloak.services.clientpolicy.executor.ReferenceTypeTokenExecutor;
+import org.keycloak.services.clientpolicy.executor.ReferenceTypeTokenExecutorFactory;
 import org.keycloak.services.clientpolicy.executor.IntentClientBindCheckExecutor;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.testsuite.rest.TestApplicationResourceProviderFactory;
@@ -64,6 +66,7 @@ import org.keycloak.util.JsonSerialization;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+<<<<<<< HEAD
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -74,6 +77,19 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
+=======
+import javax.ws.rs.GET;
+import javax.ws.rs.InternalServerErrorException;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+>>>>>>> ef5c77fcc4 (Supporting reference access/refresh tokens)
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -88,9 +104,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
@@ -106,14 +119,17 @@ public class TestingOIDCEndpointsApplicationResource {
     private final ConcurrentMap<String, TestAuthenticationChannelRequest> authenticationChannelRequests;
     private final ConcurrentMap<String, ClientNotificationEndpointRequest> cibaClientNotifications;
     private final ConcurrentMap<String, String> intentClientBindings;
+    private final ConcurrentMap<String, String> referenceTypeTokenConversions;
 
     public TestingOIDCEndpointsApplicationResource(TestApplicationResourceProviderFactory.OIDCClientData oidcClientData,
             ConcurrentMap<String, TestAuthenticationChannelRequest> authenticationChannelRequests, ConcurrentMap<String, ClientNotificationEndpointRequest> cibaClientNotifications,
-            ConcurrentMap<String, String> intentClientBindings) {
+            ConcurrentMap<String, String> intentClientBindings,
+            ConcurrentMap<String, String> referenceTypeTokenConversions) {
         this.clientData = oidcClientData;
         this.authenticationChannelRequests = authenticationChannelRequests;
         this.cibaClientNotifications = cibaClientNotifications;
         this.intentClientBindings = intentClientBindings;
+        this.referenceTypeTokenConversions = referenceTypeTokenConversions;
     }
 
     @GET
@@ -767,5 +783,49 @@ public class TestingOIDCEndpointsApplicationResource {
             response.setIsBound(Boolean.TRUE);
         }
         return response;
+    }
+
+    @POST
+    @Path("/bind-selfcontained-type-token")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @NoCache
+    public Response bindSelfcontainedTypeToken(ReferenceTypeTokenExecutor.ReferenceTypeTokenBindRequest request) {
+        if (!isValidBindSelfcontainedTypeTokenRequest(request)) {
+            return Response.status(Status.BAD_REQUEST).build();
+        }
+        referenceTypeTokenConversions.put(request.getReferenceTypeToken(), request.getSelfcontainedTypeToken());
+        return Response.noContent().build();
+    }
+
+    private boolean isValidBindSelfcontainedTypeTokenRequest(ReferenceTypeTokenExecutor.ReferenceTypeTokenBindRequest request) {
+        if (request == null) return false;
+        String referenceTypeToken = request.getReferenceTypeToken();
+        String selfcontainedTypeToken = request.getSelfcontainedTypeToken();
+        if (referenceTypeToken == null || referenceTypeToken.isEmpty()) return false;
+        if (selfcontainedTypeToken == null || selfcontainedTypeToken.isEmpty()) return false;
+        if (referenceTypeTokenConversions.containsKey(referenceTypeToken)) return false;
+        return true;
+    }
+
+    @GET
+    @Path("/get-selfcontained-type-token")
+    @Produces(MediaType.APPLICATION_JSON)
+    @NoCache
+    public ReferenceTypeTokenExecutor.ReferenceTypeTokenBindResponse getSelfcontainedTypeToken(@QueryParam(ReferenceTypeTokenExecutorFactory.SELFCONTAINED_TYPE_TOKEN_GET_ENDPOINT_QUERY_PARAM) String referenceTypeToken) {
+        if (referenceTypeToken == null || referenceTypeToken.isEmpty()) throw new BadRequestException("invalid reference type token");
+
+        if (referenceTypeToken.equals("ThrowInternalServerError")) {
+            // invoke internal server error on token store
+            throw new InternalServerErrorException("internal server error");
+        }
+
+        ReferenceTypeTokenExecutor.ReferenceTypeTokenBindResponse res = new ReferenceTypeTokenExecutor.ReferenceTypeTokenBindResponse();
+        if (referenceTypeTokenConversions.containsKey(referenceTypeToken)) {
+            res.setSelfcontainedTypeToken(referenceTypeTokenConversions.get(referenceTypeToken));
+        } else {
+            throw new BadRequestException("no self-contained found");
+        }
+        return res;
     }
 }
