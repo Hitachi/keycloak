@@ -22,7 +22,6 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.OAuth2DeviceCodeModel;
 import org.keycloak.protocol.oidc.TokenManager;
-import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 
@@ -35,18 +34,15 @@ public class DeviceTokenResponseContext implements ClientPolicyContext {
     private final MultivaluedMap<String, String> requestParameters;
     private final AuthenticatedClientSessionModel clientSession;
     private final TokenManager.AccessTokenResponseBuilder accessTokenResponseBuilder;
-    private AccessTokenResponse accessTokenResponse;
 
     public DeviceTokenResponseContext(OAuth2DeviceCodeModel deviceCodeModel,
             MultivaluedMap<String, String> requestParameters,
             AuthenticatedClientSessionModel clientSession,
-            TokenManager.AccessTokenResponseBuilder accessTokenResponseBuilder,
-            AccessTokenResponse accessTokenResponse) {
+            TokenManager.AccessTokenResponseBuilder accessTokenResponseBuilder) {
         this.deviceCodeModel = deviceCodeModel;
         this.requestParameters = requestParameters;
         this.clientSession = clientSession;
         this.accessTokenResponseBuilder = accessTokenResponseBuilder;
-        this.accessTokenResponse = accessTokenResponse;
     }
 
     @Override
@@ -64,10 +60,6 @@ public class DeviceTokenResponseContext implements ClientPolicyContext {
 
     public TokenManager.AccessTokenResponseBuilder getAccessTokenResponseBuilder() {
         return accessTokenResponseBuilder;
-    }
-
-    public AccessTokenResponse getAccessTokenResponse() {
-        return accessTokenResponse;
     }
 
     public AuthenticatedClientSessionModel getClientSession() {

@@ -21,10 +21,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Optional;
 
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.UriBuilder;
-import javax.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.UriBuilder;
+import jakarta.ws.rs.core.Response.Status;
 
 import org.jboss.logging.Logger;
 import org.keycloak.OAuth2Constants;
@@ -113,13 +113,13 @@ public class ReferenceTypeTokenExecutor extends AbstractReferenceTypeTokenExecut
             if (exceptionOnInvalidToken != null) {
                 throw exceptionOnInvalidToken;
             } else {
-                throw new ClientPolicyException(OAuthErrorException.INVALID_TOKEN, "Invalid token");
+                throw new ClientPolicyException(ERR_PASS_THROUGH_INTENTIONALLY);
             }
         }
 
         if (!isValidSelfcontainedTypeTokenStoreUrl(configuration.getSelfcontainedTypeTokenGetEndpoint())) {
             logger.warnv("getting self-contained token failed due to invalid self-contained type token get endpoint configuration.");
-            throw new ClientPolicyException(OAuthErrorException.SERVER_ERROR, "Internal problem", Status.INTERNAL_SERVER_ERROR);
+            throw new ClientPolicyException(ERR_PASS_THROUGH_INTENTIONALLY);
         }
 
         UriBuilder uri = UriBuilder.fromUri(configuration.getSelfcontainedTypeTokenGetEndpoint())
@@ -136,19 +136,19 @@ public class ReferenceTypeTokenExecutor extends AbstractReferenceTypeTokenExecut
                 if (exceptionOnInvalidToken != null) {
                     throw exceptionOnInvalidToken;
                 } else {
-                    throw new ClientPolicyException(OAuthErrorException.INVALID_TOKEN, "Invalid token");
+                    throw new ClientPolicyException(ERR_PASS_THROUGH_INTENTIONALLY);
                 }
             } else if (res.getStatus() != Status.OK.getStatusCode()) {
                 String error = Optional.ofNullable(res.asJson()).map(t->t.get(OAuth2Constants.ERROR_DESCRIPTION)).map(t->t.asText()).orElse(null);
                 logger.warnv("getting self-contained token failed due to internal problems. error = {0}", error);
-                throw new ClientPolicyException(OAuthErrorException.SERVER_ERROR, "Internal problem", Status.INTERNAL_SERVER_ERROR);
+                throw new ClientPolicyException(ERR_PASS_THROUGH_INTENTIONALLY);
             }
 
             response = res.asJson(ReferenceTypeTokenBindResponse.class);
 
         } catch (IOException ioe) {
             logger.warnv("getting self-contained token failed due to network errror. error = {0}", ioe.getMessage());
-            throw new ClientPolicyException(OAuthErrorException.SERVER_ERROR, "Internal problem", Status.INTERNAL_SERVER_ERROR);
+            throw new ClientPolicyException(ERR_PASS_THROUGH_INTENTIONALLY);
         }
 
         return response.getSelfcontainedTypeToken();
@@ -159,12 +159,12 @@ public class ReferenceTypeTokenExecutor extends AbstractReferenceTypeTokenExecut
 
         if (!isValidBindRequest(selfcontainedTypeToken, referenceTypeToken)) {
             logger.warnv("invalid bind tokens request");
-            throw new ClientPolicyException(OAuthErrorException.SERVER_ERROR,"Internal problem", Status.INTERNAL_SERVER_ERROR);
+            throw new ClientPolicyException(ERR_PASS_THROUGH_INTENTIONALLY);
         }
 
         if (!isValidSelfcontainedTypeTokenStoreUrl(configuration.getSelfcontainedTypeTokenBindEndpoint())) {
             logger.warnv("getting self-contained token failed due to invalid self-contained type token bind endopoint configuration.");
-            throw new ClientPolicyException(OAuthErrorException.SERVER_ERROR, "Internal problem", Status.INTERNAL_SERVER_ERROR);
+            throw new ClientPolicyException(ERR_PASS_THROUGH_INTENTIONALLY);
         }
 
         ReferenceTypeTokenBindRequest request = new ReferenceTypeTokenBindRequest();
@@ -180,12 +180,12 @@ public class ReferenceTypeTokenExecutor extends AbstractReferenceTypeTokenExecut
 
             if (simpleHttp.asStatus() != Status.NO_CONTENT.getStatusCode()) {
                 logger.warnv("binding reference type token with self-contained token failed. referenceTypeToken = {0}", referenceTypeToken);
-                throw new ClientPolicyException(OAuthErrorException.SERVER_ERROR, "Internal problem", Status.INTERNAL_SERVER_ERROR);
+                throw new ClientPolicyException(ERR_PASS_THROUGH_INTENTIONALLY);
             }
 
         } catch (IOException ioe) {
             logger.warnv("binding reference type token with self-contained token failed due to network error error =  {0}", ioe.getMessage());
-            throw new ClientPolicyException(OAuthErrorException.SERVER_ERROR, "Internal problem", Status.INTERNAL_SERVER_ERROR);
+            throw new ClientPolicyException(ERR_PASS_THROUGH_INTENTIONALLY);
         }
     }
 

@@ -50,6 +50,7 @@ import org.keycloak.representations.AccessToken;
 import org.keycloak.services.CorsErrorResponseException;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
 import org.keycloak.services.clientpolicy.context.TokenRevokeContext;
+import org.keycloak.services.clientpolicy.context.TokenRevokeResponseContext;
 import org.keycloak.services.managers.UserSessionCrossDCManager;
 import org.keycloak.services.managers.UserSessionManager;
 import org.keycloak.services.resources.Cors;
@@ -102,10 +103,8 @@ public class TokenRevocationEndpoint {
         try {
             session.clientPolicy().triggerOnEvent(new TokenRevokeContext(formParams));
         } catch (ClientPolicyException cpe) {
-            if (!OAuthErrorException.INVALID_TOKEN.equals(cpe.getError())) {
-                event.error(cpe.getError());
-                throw new CorsErrorResponseException(cors, cpe.getError(), cpe.getErrorDetail(), cpe.getErrorStatus());
-            }
+            event.error(cpe.getError());
+            throw new CorsErrorResponseException(cors, cpe.getError(), cpe.getErrorDetail(), cpe.getErrorStatus());
         }
 
         checkToken();
@@ -121,6 +120,13 @@ public class TokenRevocationEndpoint {
         }
 
         event.success();
+
+        try {
+            session.clientPolicy().triggerOnEvent(new TokenRevokeResponseContext(formParams));
+        } catch (ClientPolicyException cpe) {
+            event.error(cpe.getError());
+            throw new CorsErrorResponseException(cors, cpe.getError(), cpe.getErrorDetail(), cpe.getErrorStatus());
+        }
 
         session.getProvider(SecurityHeadersProvider.class).options().allowEmptyContentType();
         return cors.builder(Response.ok()).build();

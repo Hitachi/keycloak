@@ -81,7 +81,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.MultivaluedMap;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.security.Key;
 import java.util.Map;
@@ -167,9 +166,7 @@ public class UserInfoEndpoint {
         try {
             session.clientPolicy().triggerOnEvent(new UserInfoRequestContext(tokenForUserInfo));
         } catch (ClientPolicyException cpe) {
-            if (!OAuthErrorException.INVALID_TOKEN.equals(cpe.getError())) {
-                throw error.error(cpe.getError()).errorDescription(cpe.getErrorDetail()).status(cpe.getErrorStatus()).build();
-            }
+            throw error.error(cpe.getError()).errorDescription(cpe.getErrorDetail()).status(cpe.getErrorStatus()).build();
         }
 
         EventBuilder event = new EventBuilder(realm, session, clientConnection)
@@ -429,7 +426,7 @@ public class UserInfoEndpoint {
         }
     }
 
-    public static class TokenForUserInfo implements Serializable {
+    public static class TokenForUserInfo {
 
         private String token;
 

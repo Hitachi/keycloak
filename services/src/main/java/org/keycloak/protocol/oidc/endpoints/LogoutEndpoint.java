@@ -514,9 +514,7 @@ public class LogoutEndpoint {
             session.clientPolicy().triggerOnEvent(new LogoutRequestContext(form));
             refreshToken = form.getFirst(OAuth2Constants.REFRESH_TOKEN);
         } catch (ClientPolicyException cpe) {
-            if (!OAuthErrorException.INVALID_TOKEN.equals(cpe.getError())) {
-                throw new CorsErrorResponseException(cors, cpe.getError(), cpe.getErrorDetail(), cpe.getErrorStatus());
-            }
+            throw new CorsErrorResponseException(cors, cpe.getError(), cpe.getErrorDetail(), cpe.getErrorStatus());
         }
 
         RefreshToken token = null;

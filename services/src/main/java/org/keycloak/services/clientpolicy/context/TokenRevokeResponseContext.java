@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Red Hat, Inc. and/or its affiliates
+ * Copyright 2020 Red Hat, Inc. and/or its affiliates
  * and other contributors as indicated by the @author tags.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,34 +19,27 @@ package org.keycloak.services.clientpolicy.context;
 
 import jakarta.ws.rs.core.MultivaluedMap;
 
-import org.keycloak.protocol.oidc.TokenManager;
 import org.keycloak.services.clientpolicy.ClientPolicyContext;
 import org.keycloak.services.clientpolicy.ClientPolicyEvent;
 
 /**
  * @author <a href="mailto:takashi.norimatsu.ws@hitachi.com">Takashi Norimatsu</a>
  */
-public class TokenRefreshResponseContext implements ClientPolicyContext {
+public class TokenRevokeResponseContext implements ClientPolicyContext {
 
     private final MultivaluedMap<String, String> params;
-    private final TokenManager.AccessTokenResponseBuilder accessTokenResponseBuilder;
 
-    public TokenRefreshResponseContext(MultivaluedMap<String, String> params,
-            TokenManager.AccessTokenResponseBuilder accessTokenResponseBuilder) {
+    public TokenRevokeResponseContext(MultivaluedMap<String, String> params) {
         this.params = params;
-        this.accessTokenResponseBuilder = accessTokenResponseBuilder;
     }
 
     @Override
     public ClientPolicyEvent getEvent() {
-        return ClientPolicyEvent.TOKEN_REFRESH_RESPONSE;
+        return ClientPolicyEvent.TOKEN_REVOKE_RESPONSE;
     }
 
     public MultivaluedMap<String, String> getParams() {
         return params;
     }
 
-    public TokenManager.AccessTokenResponseBuilder getAccessTokenResponseBuilder() {
-        return accessTokenResponseBuilder;
-    }
 }

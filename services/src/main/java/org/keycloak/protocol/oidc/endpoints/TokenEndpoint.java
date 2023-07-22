@@ -119,7 +119,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -453,11 +453,11 @@ public class TokenEndpoint {
         // Set nonce as an attribute in the ClientSessionContext. Will be used for the token generation
         clientSessionCtx.setAttribute(OIDCLoginProtocol.NONCE_PARAM, codeData.getNonce());
 
-        return createTokenResponse(user, userSession, clientSessionCtx, scopeParam, true, (s, t) -> {return new TokenResponseContext(formParams, parseResult, clientSessionCtx, s, t);});
+        return createTokenResponse(user, userSession, clientSessionCtx, scopeParam, true, s -> {return new TokenResponseContext(formParams, parseResult, clientSessionCtx, s);});
     }
 
     public Response createTokenResponse(UserModel user, UserSessionModel userSession, ClientSessionContext clientSessionCtx,
-        String scopeParam, boolean code, BiFunction<TokenManager.AccessTokenResponseBuilder, AccessTokenResponse, ClientPolicyContext> clientPolicyContextGenerator) {
+    		String scopeParam, boolean code, Function<TokenManager.AccessTokenResponseBuilder, ClientPolicyContext> clientPolicyContextGenerator) {
         AccessToken token = tokenManager.createClientAccessToken(session, realm, client, user, userSession, clientSessionCtx);
 
         TokenManager.AccessTokenResponseBuilder responseBuilder = tokenManager
@@ -473,31 +473,29 @@ public class TokenEndpoint {
             responseBuilder.generateIDToken().generateAccessTokenHash();
         }
 
-        AccessTokenResponse res = new AccessTokenResponse();
         if (clientPolicyContextGenerator != null) {
             try {
-                session.clientPolicy().triggerOnEvent(clientPolicyContextGenerator.apply(responseBuilder, res));
+                session.clientPolicy().triggerOnEvent(clientPolicyContextGenerator.apply(responseBuilder));
             } catch (ClientPolicyException cpe) {
                 event.error(cpe.getError());
                 throw new CorsErrorResponseException(cors, cpe.getError(), cpe.getErrorDetail(), cpe.getErrorStatus());
             }
         }
 
-        if (res.getToken() == null) {
-            if (code) {
-                try {
-                    res = responseBuilder.build();
-                } catch (RuntimeException re) {
-                    if ("can not get encryption KEK".equals(re.getMessage())) {
-                        throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST,
-                            "can not get encryption KEK", Response.Status.BAD_REQUEST);
-                    } else {
-                        throw re;
-                    }
-                }
-            } else {
+        AccessTokenResponse res = null;
+        if (code) {
+            try {
                 res = responseBuilder.build();
-            }
+            } catch (RuntimeException re) {
+                if ("can not get encryption KEK".equals(re.getMessage())) {
+                    throw new CorsErrorResponseException(cors, OAuthErrorException.INVALID_REQUEST,
+                        "can not get encryption KEK", Response.Status.BAD_REQUEST);
+                } else {
+                    throw re;
+                 }
+             }
+        } else {
+            res = responseBuilder.build();
         }
 
         event.success();
@@ -533,26 +531,21 @@ public class TokenEndpoint {
             session.clientPolicy().triggerOnEvent(new TokenRefreshContext(formParams));
             refreshToken = formParams.getFirst(OAuth2Constants.REFRESH_TOKEN);
         } catch (ClientPolicyException cpe) {
-            if (!OAuthErrorException.INVALID_TOKEN.equals(cpe.getError())) {
-                event.error(Errors.INVALID_TOKEN);
-                throw new CorsErrorResponseException(cors, cpe.getError(), cpe.getErrorDetail(), cpe.getErrorStatus());
-            }
+            event.error(cpe.getError());
+            throw new CorsErrorResponseException(cors, cpe.getError(), cpe.getErrorDetail(), cpe.getErrorStatus());
         }
 
-        AccessTokenResponse res = new AccessTokenResponse();
+        AccessTokenResponse res;
         try {
             // KEYCLOAK-6771 Certificate Bound Token
             TokenManager.AccessTokenResponseBuilder responseBuilder = tokenManager.refreshAccessToken(session, session.getContext().getUri(), clientConnection, realm, client, refreshToken, event, headers, request);
 
-            session.clientPolicy().triggerOnEvent(new TokenRefreshResponseContext(formParams, responseBuilder, res));
+            session.clientPolicy().triggerOnEvent(new TokenRefreshResponseContext(formParams, responseBuilder));
 
-            if (res.getToken() == null) {
-                res = responseBuilder.build();
-            }
+            res = responseBuilder.build();
 
             if (!responseBuilder.isOfflineToken()) {
-                String sessionState = res.getSessionState();
-                UserSessionModel userSession = lockUserSessionsForModification(session, () -> session.sessions().getUserSession(realm, sessionState));
+                UserSessionModel userSession = lockUserSessionsForModification(session, () -> session.sessions().getUserSession(realm, res.getSessionState()));
                 AuthenticatedClientSessionModel clientSession = userSession.getAuthenticatedClientSessionByClient(client.getId());
                 updateClientSession(clientSession);
                 updateUserSessionFromClientAuth(userSession);

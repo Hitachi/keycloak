@@ -40,8 +40,6 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
-import java.io.Serializable;
-
 /**
  * A token introspection endpoint based on RFC-7662.
  *
@@ -49,8 +47,8 @@ import java.io.Serializable;
  */
 public class TokenIntrospectionEndpoint {
 
-    private static final String PARAM_TOKEN_TYPE_HINT = "token_type_hint";
-    private static final String PARAM_TOKEN = "token";
+    public static final String PARAM_TOKEN_TYPE_HINT = "token_type_hint";
+    public static final String PARAM_TOKEN = "token";
 
     private final KeycloakSession session;
 
@@ -89,10 +87,9 @@ public class TokenIntrospectionEndpoint {
             tokenTypeHint = AccessTokenIntrospectionProviderFactory.ACCESS_TOKEN_TYPE;
         }
 
-        TokenForIntrospection token = new TokenForIntrospection();
-        token.setToken(formParams.getFirst(PARAM_TOKEN));
+        String token = formParams.getFirst(PARAM_TOKEN);
 
-        if (token.getToken() == null) {
+        if (token == null) {
             throw throwErrorResponseException(Errors.INVALID_REQUEST, "Token not provided.", Status.BAD_REQUEST);
         }
 
@@ -103,16 +100,15 @@ public class TokenIntrospectionEndpoint {
         }
 
         try {
-            session.clientPolicy().triggerOnEvent(new TokenIntrospectContext(formParams, token));
+            session.clientPolicy().triggerOnEvent(new TokenIntrospectContext(formParams));
+            token = formParams.getFirst(PARAM_TOKEN);
         } catch (ClientPolicyException cpe) {
-            if (!OAuthErrorException.INVALID_TOKEN.equals(cpe.getError())) {
-                throw throwErrorResponseException(Errors.INVALID_REQUEST, cpe.getErrorDetail(), Status.BAD_REQUEST);
-            }
+            throw throwErrorResponseException(Errors.INVALID_REQUEST, cpe.getErrorDetail(), Status.BAD_REQUEST);
         }
 
         try {
 
-            Response response = provider.introspect(token.getToken());
+            Response response = provider.introspect(token);
 
             this.event.success();
 
@@ -167,16 +163,4 @@ public class TokenIntrospectionEndpoint {
         return new ErrorResponseException(error, detail, status);
     }
 
-    public static class TokenForIntrospection implements Serializable {
-
-        private String token;
-
-        public String getToken() {
-            return token;
-        }
-
-        public void setToken(String token) {
-            this.token = token;
-        }
-    }
 }

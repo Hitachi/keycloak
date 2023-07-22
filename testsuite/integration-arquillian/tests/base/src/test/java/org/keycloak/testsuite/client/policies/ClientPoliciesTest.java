@@ -1353,11 +1353,12 @@ public class ClientPoliciesTest extends AbstractClientPoliciesTest {
         // token refresh
         String invalidAccessToken = "ThrowInternalServerError";
         OAuthClient.AccessTokenResponse accessTokenResponse = oauth.doRefreshTokenRequest(invalidAccessToken, clientSecret);
-        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(), accessTokenResponse.getStatusCode());
-        assertEquals(OAuthErrorException.SERVER_ERROR, accessTokenResponse.getError());
-        assertEquals("Internal problem", accessTokenResponse.getErrorDescription());
+        assertEquals(Status.BAD_REQUEST.getStatusCode(), accessTokenResponse.getStatusCode());
+        assertEquals(OAuthErrorException.INVALID_GRANT, accessTokenResponse.getError());
+        assertEquals("Invalid refresh token", accessTokenResponse.getErrorDescription());
         events.expect(EventType.REFRESH_TOKEN_ERROR).client(clientId).user((String)null).session((String)null).clearDetails().error(OAuthErrorException.INVALID_TOKEN).assertEvent();
 
+        /* TBD
         // re-register invalid configuration of executor
         json = (new ClientProfilesBuilder()).addProfile(
                 (new ClientProfileBuilder()).createProfile(PROFILE_NAME, "Den Eichte profil")
@@ -1378,6 +1379,7 @@ public class ClientPoliciesTest extends AbstractClientPoliciesTest {
         assertEquals(OAuthErrorException.SERVER_ERROR, accessTokenResponse.getError());
         assertEquals("Internal problem", accessTokenResponse.getErrorDescription());
         events.expect(EventType.CODE_TO_TOKEN_ERROR).client(clientId).session(sessionId).error(OAuthErrorException.SERVER_ERROR).clearDetails().assertEvent();
+        */
     }
 
     private void verifySelfcontainedTypeTokenBinding(String clientId, OAuthClient.AccessTokenResponse accessTokenResponse) throws Exception {

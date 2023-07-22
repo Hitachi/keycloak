@@ -211,7 +211,7 @@ public class CibaGrantType {
         int authTime = Time.currentTime();
         userSession.setNote(AuthenticationManager.AUTH_TIME, String.valueOf(authTime));
 
-        return tokenEndpoint.createTokenResponse(user, userSession, clientSessionCtx, scopeParam, true, (s, t) -> {return new BackchannelTokenResponseContext(request, formParams, clientSessionCtx, s, t);});
+        return tokenEndpoint.createTokenResponse(user, userSession, clientSessionCtx, scopeParam, true,s -> {return new BackchannelTokenResponseContext(request, formParams, clientSessionCtx, s);});
 
     }
 
