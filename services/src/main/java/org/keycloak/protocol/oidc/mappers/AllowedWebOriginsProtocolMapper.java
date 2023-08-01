@@ -19,7 +19,9 @@ package org.keycloak.protocol.oidc.mappers;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.keycloak.models.ClientModel;
@@ -37,13 +39,16 @@ import org.keycloak.representations.AccessToken;
  *
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
  */
-public class AllowedWebOriginsProtocolMapper extends AbstractOIDCProtocolMapper implements OIDCAccessTokenMapper {
+public class AllowedWebOriginsProtocolMapper extends AbstractOIDCProtocolMapper implements OIDCAccessTokenMapper, TokenIntrospectionTokenMapper {
 
     private static final List<ProviderConfigProperty> configProperties = new ArrayList<ProviderConfigProperty>();
 
 
     public static final String PROVIDER_ID = "oidc-allowed-origins-mapper";
 
+    static {
+        OIDCAttributeMapperHelper.addIncludeInTokensConfig(configProperties, AllowedWebOriginsProtocolMapper.class);
+    }
 
     public List<ProviderConfigProperty> getConfigProperties() {
         return configProperties;
@@ -72,23 +77,43 @@ public class AllowedWebOriginsProtocolMapper extends AbstractOIDCProtocolMapper 
     @Override
     public AccessToken transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
                                             UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
+
+        if (!OIDCAttributeMapperHelper.includeInAccessToken(mappingModel)){
+            return token;
+        }
+        setWebOrigin(token, session, clientSessionCtx);
+        return token;
+    }
+
+    @Override
+    public AccessToken transformIntrospectionToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
+                                                   UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
+        if (!OIDCAttributeMapperHelper.includeInIntrospection(mappingModel)) {
+            return token;
+        }
+        setWebOrigin(token, session, clientSessionCtx);
+        return token;
+    }
+
+    private void setWebOrigin(AccessToken token, KeycloakSession session, ClientSessionContext clientSessionCtx) {
         ClientModel client = clientSessionCtx.getClientSession().getClient();
 
         Set<String> allowedOrigins = client.getWebOrigins();
         if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
             token.setAllowedOrigins(WebOriginsUtils.resolveValidWebOrigins(session, client));
         }
-
-        return token;
     }
 
 
-    public static ProtocolMapperModel createClaimMapper(String name) {
+    public static ProtocolMapperModel createClaimMapper(String name, boolean accessToken, boolean introspectionEndpoint) {
         ProtocolMapperModel mapper = new ProtocolMapperModel();
         mapper.setName(name);
         mapper.setProtocolMapper(PROVIDER_ID);
         mapper.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
-        mapper.setConfig(Collections.emptyMap());
+        Map<String, String> config = new HashMap<>();
+        if (accessToken) config.put(OIDCAttributeMapperHelper.INCLUDE_IN_ACCESS_TOKEN, "true");
+        if (introspectionEndpoint) config.put(OIDCAttributeMapperHelper.INCLUDE_IN_INTROSPECTION, "true");
+        mapper.setConfig(config);
         return mapper;
     }
 
