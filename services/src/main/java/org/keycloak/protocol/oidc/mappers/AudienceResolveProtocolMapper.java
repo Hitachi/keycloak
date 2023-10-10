@@ -33,6 +33,9 @@ import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.utils.RoleResolveUtil;
 
+import static org.keycloak.protocol.oidc.mappers.OIDCAttributeMapperHelper.INCLUDE_IN_ACCESS_TOKEN;
+import static org.keycloak.protocol.oidc.mappers.OIDCAttributeMapperHelper.INCLUDE_IN_INTROSPECTION;
+
 /**
  * Protocol mapper, which adds all client_ids of "allowed" clients to the audience field of the token. Allowed client means the client
  * for which user has at least one client role
@@ -82,21 +85,43 @@ public class AudienceResolveProtocolMapper extends AbstractOIDCProtocolMapper im
     @Override
     public AccessToken transformAccessToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
                                             UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
-        if (!OIDCAttributeMapperHelper.includeInAccessToken(mappingModel)){
+        if (!includeInAccessToken(mappingModel)){
             return token;
         }
         setAudience(token, clientSessionCtx, session);
         return token;
     }
 
+    private boolean includeInAccessToken(ProtocolMapperModel mappingModel) {
+        String includeInAccessToken = mappingModel.getConfig().get(INCLUDE_IN_ACCESS_TOKEN);
+
+        // Backwards compatibility
+        if (includeInAccessToken == null) {
+            return true;
+        }
+
+        return "true".equals(includeInAccessToken);
+    }
+
     @Override
     public AccessToken transformIntrospectionToken(AccessToken token, ProtocolMapperModel mappingModel, KeycloakSession session,
                                                    UserSessionModel userSession, ClientSessionContext clientSessionCtx) {
-        if (!OIDCAttributeMapperHelper.includeInIntrospection(mappingModel)) {
+        if (!includeInIntrospection(mappingModel)) {
             return token;
         }
         setAudience(token, clientSessionCtx, session);
         return token;
+    }
+
+    private boolean includeInIntrospection(ProtocolMapperModel mappingModel) {
+        String includeInIntrospection = mappingModel.getConfig().get(INCLUDE_IN_INTROSPECTION);
+
+        // Backwards compatibility
+        if (includeInIntrospection == null) {
+            return true;
+        }
+
+        return "true".equals(includeInIntrospection);
     }
 
     private void setAudience(AccessToken token, ClientSessionContext clientSessionCtx, KeycloakSession session) {
@@ -121,8 +146,16 @@ public class AudienceResolveProtocolMapper extends AbstractOIDCProtocolMapper im
         mapper.setProtocolMapper(PROVIDER_ID);
         mapper.setProtocol(OIDCLoginProtocol.LOGIN_PROTOCOL);
         Map<String, String> config = new HashMap<>();
-        if (accessToken) config.put(OIDCAttributeMapperHelper.INCLUDE_IN_ACCESS_TOKEN, "true");
-        if (introspectionEndpoint) config.put(OIDCAttributeMapperHelper.INCLUDE_IN_INTROSPECTION, "true");
+        if (accessToken) {
+            config.put(INCLUDE_IN_ACCESS_TOKEN, "true");
+        } else {
+            config.put(INCLUDE_IN_ACCESS_TOKEN, "false");
+        }
+        if (introspectionEndpoint) {
+            config.put(INCLUDE_IN_INTROSPECTION, "true");
+        } else {
+            config.put(INCLUDE_IN_INTROSPECTION, "false");
+        }
         mapper.setConfig(config);
         return mapper;
     }

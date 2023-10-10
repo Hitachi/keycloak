@@ -22,6 +22,7 @@ import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.ProtocolMapperRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.testsuite.AbstractKeycloakTest;
 import org.keycloak.testsuite.admin.ApiUtil;
 import org.keycloak.testsuite.arquillian.annotation.EnableFeature;
@@ -78,11 +79,28 @@ public class LightWeightAccessTokenTest extends AbstractKeycloakTest {
 
     @Override
     public void addTestRealms(List<RealmRepresentation> testRealms) {
-        RealmRepresentation realm = loadJson(getClass().getResourceAsStream("/mapper-test/testrealm.json"), RealmRepresentation.class);
+        RealmRepresentation realm = loadJson(getClass().getResourceAsStream("/testrealm.json"), RealmRepresentation.class);
+        UserRepresentation user = findUser(realm, "test-user@localhost");
+        Map<String, List<String>> attributes = new HashMap<>(){{
+            put("street", Arrays.asList("1 My Street"));
+            put("locality", Arrays.asList("Cardiff"));
+            put("region", Arrays.asList("Cardiff"));
+            put("postal_code", Arrays.asList("CF104RA"));
+        }};
+        user.setAttributes(attributes);
+        user.setGroups(Arrays.asList("/topGroup/level2group"));
         ClientRepresentation confApp = KeycloakModelUtils.createClient(realm, "resource-server");
         confApp.setSecret("password");
         confApp.setServiceAccountsEnabled(Boolean.TRUE);
         testRealms.add(realm);
+    }
+
+    private UserRepresentation findUser(RealmRepresentation testRealm, String userName) {
+        for (UserRepresentation user : testRealm.getUsers()) {
+            if (user.getUsername().equals(userName)) return user;
+        }
+
+        return null;
     }
 
     @Test
