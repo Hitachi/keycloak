@@ -486,8 +486,8 @@ importers:
         specifier: ^3.7.3
         version: 3.7.3(@types/node@20.11.26)(rollup@4.12.1)(typescript@5.4.2)(vite@5.1.6)
       vite-plugin-lib-inject-css:
-        specifier: ^2.0.0
-        version: 2.0.0(vite@5.1.6)
+        specifier: ^2.0.1
+        version: 2.0.1(vite@5.1.6)
       vitest:
         specifier: ^1.3.0
         version: 1.3.1(@types/node@20.11.26)(jsdom@24.0.0)(lightningcss@1.24.0)
@@ -2544,7 +2544,7 @@ packages:
   /@vitest/snapshot@1.3.1:
     resolution: {integrity: sha512-EF++BZbt6RZmOlE3SuTPu/NfwBF6q4ABS37HHXzs2LUVPBLx2QoY/K0fKpRChSo8eLiuxcbCVfqKgx/dplCDuQ==}
     dependencies:
-      magic-string: 0.30.7
+      magic-string: 0.30.8
       pathe: 1.1.1
       pretty-format: 29.7.0
     dev: true
@@ -6163,8 +6163,8 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
-  /magic-string@0.30.7:
-    resolution: {integrity: sha512-8vBuFF/I/+OSLRmdf2wwFCJCz+nSn0m6DPvGH1fS/KiQoSaR+sETbov0eIk9KhEKy8CYqIkIAnbohxT/4H0kuA==}
+  /magic-string@0.30.8:
+    resolution: {integrity: sha512-ISQTe55T2ao7XtlAStud6qwYPZjE4GK1S/BeVPus4jrq6JuOnQ00YKQC581RWhR122W7msZV263KzVeLoqidyQ==}
     engines: {node: '>=12'}
     dependencies:
       '@jridgewell/sourcemap-codec': 1.4.15
@@ -8272,12 +8272,12 @@ packages:
       - supports-color
     dev: true
 
-  /vite-plugin-lib-inject-css@2.0.0(vite@5.1.6):
-    resolution: {integrity: sha512-5RK9eP2biW340FEbpI8eHZQfeqIz0+Glbkk4U1fZ1QKOvyaYy5K6TmW43KuhmGLizk2Vd4Nv7OwGpxq2wXclyQ==}
+  /vite-plugin-lib-inject-css@2.0.1(vite@5.1.6):
+    resolution: {integrity: sha512-86VU8m4t3TNPk9xfdnNDqn1OHkgrPHpP7B5wkVys4tWSLwMMIucCgJdc5wenGntLNMWKChJV0Ut3qGH6iGojMg==}
     peerDependencies:
       vite: '*'
     dependencies:
-      magic-string: 0.30.7
+      magic-string: 0.30.8
       picocolors: 1.0.0
       vite: 5.1.6(@types/node@20.11.26)(lightningcss@1.24.0)
     dev: true
@@ -8757,6 +8757,7 @@ packages:
       keycloak-js: link:libs/keycloak-js
       lodash-es: 4.17.21
       monaco-editor: 0.47.0
+      p-debounce: 4.0.0
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
       react-dropzone: 14.2.3(react@18.2.0)
