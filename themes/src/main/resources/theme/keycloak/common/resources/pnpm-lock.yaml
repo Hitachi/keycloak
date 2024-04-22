@@ -15,8 +15,8 @@ dependencies:
     specifier: ^4.278.1
     version: 4.278.1(react-dom@18.2.0)(react@18.2.0)
   alpinejs:
-    specifier: ^3.13.7
-    version: 3.13.7
+    specifier: ^3.13.9
+    version: 3.13.9
   jquery:
     specifier: ^3.7.1
     version: 3.7.1
@@ -595,8 +595,8 @@ packages:
     hasBin: true
     dev: true
 
-  /alpinejs@3.13.7:
-    resolution: {integrity: sha512-rcTyjTANbsePq1hb7eSekt3qjI94HLGeO6JaRjCssCVbIIc+qBrc7pO5S/+2JB6oojIibjM6FA+xRI3zhGPZIg==}
+  /alpinejs@3.13.9:
+    resolution: {integrity: sha512-BTEJ3fcUpqKlB+aFYSWGVEp8IP3vA96x7wUaNSdb5SJxV5i7s+/Bduxy9D6TokcqpW5MygsnG1eBEFfr4AnQSw==}
     dependencies:
       '@vue/reactivity': 3.1.5
     dev: false
@@ -1123,6 +1123,10 @@ packages:
       supports-preserve-symlinks-flag: 1.0.0
     dev: true
 
+  /rfc4648@1.5.3:
+    resolution: {integrity: sha512-MjOWxM065+WswwnmNONOT+bD1nXzY9Km6u3kzvnx8F8/HXGZdz3T6e6vZJ8Q/RIMUSp/nxqjH3GwvJDy8ijeQQ==}
+    dev: false
+
   /rollup@4.13.0:
     resolution: {integrity: sha512-3YegKemjoQnYKmsBlOHfMLVPPA5xLkQ8MHLLSw/fBrFaVkEayL51DilPpNNLq1exr98F2B1TzrV0FUlN3gWRPg==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
@@ -1236,7 +1240,3 @@ packages:
   /wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
     dev: true
-
-  /rfc4648@1.5.3:
-    resolution: {integrity: sha512-MjOWxM065+WswwnmNONOT+bD1nXzY9Km6u3kzvnx8F8/HXGZdz3T6e6vZJ8Q/RIMUSp/nxqjH3GwvJDy8ijeQQ==}
-    dev: false
