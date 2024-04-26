@@ -44,11 +44,11 @@
     "@patternfly/react-styles": "^4.92.8",
     "keycloak-js": "workspace:*",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.3.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.65",
-    "@types/react-dom": "^18.2.22",
+    "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react-swc": "^3.6.0",
     "rollup-plugin-peer-deps-external": "^2.2.4",
     "vite": "^5.2.6",
