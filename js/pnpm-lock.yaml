@@ -314,8 +314,8 @@ importers:
         specifier: ^1.4.2
         version: 1.4.2
       tar-fs:
-        specifier: ^3.0.5
-        version: 3.0.5
+        specifier: ^3.0.6
+        version: 3.0.6
 
   libs/keycloak-admin-client:
     dependencies:
@@ -7813,8 +7813,8 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /tar-fs@3.0.5:
-    resolution: {integrity: sha512-JOgGAmZyMgbqpLwct7ZV8VzkEB6pxXFBVErLtb+XCOqzc6w1xiWKI9GVd6bwk68EX7eJ4DWmfXVmq8K2ziZTGg==}
+  /tar-fs@3.0.6:
+    resolution: {integrity: sha512-iokBDQQkUyeXhgPYaZxmczGPhnhXZ0CmrqI+MOb/WFGS9DW5wnfrLgtjUJBvz50vQ3qfRwJ62QVoCFu8mPVu5w==}
     dependencies:
       pump: 3.0.0
       tar-stream: 3.1.6
