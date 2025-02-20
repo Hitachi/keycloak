@@ -465,8 +465,8 @@ importers:
         specifier: ^1.5.4
         version: 1.5.4
       uuid:
-        specifier: ^11.0.4
-        version: 11.0.4
+        specifier: ^11.1.0
+        version: 11.1.0
     devDependencies:
       '@rollup/plugin-commonjs':
         specifier: ^28.0.2
@@ -3856,6 +3856,7 @@ packages:
 
   jquery@3.4.1:
     resolution: {integrity: sha512-36+AdBzCL+y6qjw5Tx7HgzeGCzC81MDDgaUP8ld2zhx58HdqXGoBd+tHdrBMiyjGQs0Hxs/MLZTu/eHNJJuWPw==}
+    deprecated: This version is deprecated. Please upgrade to the latest version or find support at https://www.herodevs.com/support/jquery-nes.
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -5292,8 +5293,8 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  uuid@11.0.4:
-    resolution: {integrity: sha512-IzL6VtTTYcAhA/oghbFJ1Dkmqev+FpQWnCBaKq/gUluLxliWvO8DPFWfIviRmYbtaavtSQe4WBL++rFjdcGWEg==}
+  uuid@11.1.0:
+    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
     hasBin: true
 
   uuid@8.3.2:
@@ -11021,7 +11022,7 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  uuid@11.0.4: {}
+  uuid@11.1.0: {}
 
   uuid@8.3.2: {}
 
