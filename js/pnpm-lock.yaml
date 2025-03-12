@@ -470,8 +470,8 @@ importers:
         specifier: ^28.0.2
         version: 28.0.2(rollup@4.34.9)
       '@rollup/plugin-node-resolve':
-        specifier: ^16.0.0
-        version: 16.0.0(rollup@4.34.9)
+        specifier: ^16.0.1
+        version: 16.0.1(rollup@4.34.9)
       '@rollup/plugin-replace':
         specifier: ^6.0.2
         version: 6.0.2(rollup@4.34.9)
@@ -931,6 +931,7 @@ packages:
   '@faker-js/faker@9.5.1':
     resolution: {integrity: sha512-0fzMEDxkExR2cn731kpDaCCnBGBUOIXEi2S1N5l8Hltp6aPf4soTMJ+g4k8r2sI5oB+rpwIW8Uy/6jkwGpnWPg==}
     engines: {node: '>=18.0.0', npm: '>=9.0.0'}
+    deprecated: Please update to a newer version
 
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
@@ -1166,8 +1167,8 @@ packages:
       rollup:
         optional: true
 
-  '@rollup/plugin-node-resolve@16.0.0':
-    resolution: {integrity: sha512-0FPvAeVUT/zdWoO0jnb/V5BlBsUSNfkIOtFHzMO4H9MOklrmQFY6FduVHKucNb/aTFxvnGhj4MNj/T1oNdDfNg==}
+  '@rollup/plugin-node-resolve@16.0.1':
+    resolution: {integrity: sha512-tk5YCxJWIG81umIvNkSod2qK5KyQW19qcBF/B78n1bjtOON6gzKoVeSzAE8yHCZEDmqkHKkxplExA8KzdJLJpA==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       rollup: ^2.78.0||^3.0.0||^4.0.0
@@ -5993,7 +5994,7 @@ snapshots:
     optionalDependencies:
       rollup: 4.34.9
 
-  '@rollup/plugin-node-resolve@16.0.0(rollup@4.34.9)':
+  '@rollup/plugin-node-resolve@16.0.1(rollup@4.34.9)':
     dependencies:
       '@rollup/pluginutils': 5.1.4(rollup@4.34.9)
       '@types/resolve': 1.20.2
