@@ -21,7 +21,7 @@ jobs:
     permissions:
       security-events: write # Required for SARIF uploads
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build Keycloak
         uses: ./.github/actions/build-keycloak
