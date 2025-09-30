@@ -117,7 +117,7 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react-swc": "^3.9.0",
-    "cross-env": "^7.0.3",
+    "cross-env": "^10.1.0",
     "jsdom": "^26.1.0",
     "lightningcss": "^1.29.3",
     "ts-node": "^10.9.2",
