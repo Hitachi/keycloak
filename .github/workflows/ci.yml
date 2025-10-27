@@ -453,7 +453,7 @@ jobs:
 
       - name: EC2 Maven Logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: store-it-mvn-logs
           path: .github/scripts/ansible/files
@@ -605,7 +605,7 @@ jobs:
 
       - name: EC2 Maven Logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: auroraDB-migration-tests-mvn-logs
           path: .github/scripts/ansible/files
@@ -648,7 +648,7 @@ jobs:
 
       - name: EC2 Maven Logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: aurora-integration-tests-mvn-logs
           path: .github/scripts/ansible/files
