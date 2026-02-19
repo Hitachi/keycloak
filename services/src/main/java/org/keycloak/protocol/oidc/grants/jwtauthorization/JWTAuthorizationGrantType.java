@@ -96,6 +96,7 @@ public class JWTAuthorizationGrantType extends OAuth2GrantTypeBase {
                 authorizationGrantContext.setScopeParam(formParams.getFirst(OAuth2Constants.SCOPE));
             }
             
+            // Note: getIssuer() and getSubject() must be called after clientAssertionState is set
             event.detail(Details.IDENTITY_PROVIDER_ISSUER, authorizationGrantContext.getIssuer());
             event.detail(Details.IDENTITY_PROVIDER_USER_ID, authorizationGrantContext.getSubject());
 
@@ -171,8 +172,10 @@ public class JWTAuthorizationGrantType extends OAuth2GrantTypeBase {
                     authSession, authorizationGrantContext.getRestrictedScopes(), false);
             TokenManager.AccessTokenResponseBuilder responseBuilder = createTokenResponseBuilder(user, userSession, clientSessionCtx, scopeParam, null);
             if (jwtAuthorizationGrantProvider.isLimitAccessTokenExpiration()) {
-                if (authorizationGrantContext.getJWT().getExp() < responseBuilder.getAccessToken().getExp()) {
-                    responseBuilder.getAccessToken().exp(authorizationGrantContext.getJWT().getExp());
+                Long jwtExp = authorizationGrantContext.getJWT().getExp();
+                Long accessTokenExp = responseBuilder.getAccessToken().getExp();
+                if (jwtExp != null && accessTokenExp != null && jwtExp < accessTokenExp) {
+                    responseBuilder.getAccessToken().exp(jwtExp);
                 }
             }
             return createTokenResponse(responseBuilder, clientSessionCtx, true);
