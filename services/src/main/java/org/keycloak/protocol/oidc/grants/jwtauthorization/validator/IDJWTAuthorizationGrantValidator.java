@@ -21,9 +21,9 @@ public class IDJWTAuthorizationGrantValidator extends JWTAuthorizationGrantValid
         try{
             AccessToken accessToken = new JWSInput(getAssertion()).readJsonContent(AccessToken.class);
             
-            // Check if OtherClaims map exists
+            // Check if OtherClaims map exists and retrieve client_id
             if (accessToken.getOtherClaims() == null) {
-                failureCallback("Missing client_id claim in assertion");
+                failureCallback("No claims found in assertion");
                 return;
             }
             
@@ -31,7 +31,7 @@ public class IDJWTAuthorizationGrantValidator extends JWTAuthorizationGrantValid
             
             // Check if client_id claim exists in token
             if (clientIdInToken == null) {
-                failureCallback("Missing client_id claim in assertion");
+                failureCallback("Missing required client_id claim in assertion");
                 return;
             }
             
