@@ -161,7 +161,7 @@ WARNING: The OAuth Client ID Metadata Document support is an experimental featur
 
 ===== Setting up the client profile for OAuth Client ID Metadata Document
 
-The `ClientIdMetadataDocumentExecutor` is a client policy executor that processes an authorization request whose `client_id` parameter is a URL pointing to a Client ID Metadata Document.
+To process an authorization request whose `client_id` metadata is a URL pointing to a Client ID Metadata Document, you need to create the profile including `client-id-metadata-document` executor.
 
 To configure the executor, create a client policy profile in the {project_name} Admin Console:
 
@@ -181,7 +181,7 @@ To configure the executor, create a client policy profile in the {project_name} 
 
 ===== Setting up the client policy for OAuth Client ID Metadata Document
 
-The `ClientIdUriSchemeCondition` is a client policy condition that triggers when the `client_id` parameter in an authorization request is a URI matching a specified scheme (e.g., `https`). When this condition is met, the associated profiles (such as the `cimd-profile` configured above) are executed.
+To trigger the profile created above when the `client_id` parameter in an authorization request is a URI matching a specified scheme (e.g., `https`), you need to create the policy including `client-id-uri` condition.
 
 To configure the condition, create a client policy in the {project_name} Admin Console:
 
