@@ -65,6 +65,8 @@ According to the https://modelcontextprotocol.io/specification/draft/basic/autho
 
 |======
 
+WARNING: The OAuth Client ID Metadata Document support in {project_name} is an experimental feature. It may introduce breaking changes in future versions of {project_name}.
+
 The MCP specification adopts https://datatracker.ietf.org/doc/html/rfc9728[OAuth 2.0 Protected Resource Metadata (RFC 9728)]. The standard is for an MCP server and not for an authorization server like {project_name}. Therefore, it is not included in the above table.
 
 == MCP version compliance
