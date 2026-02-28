@@ -216,7 +216,7 @@ bin/kc.[sh|bat] start --spi-client-policy-executor--client-id-metadata-document-
 
 === Visual Studio Code desktop integration
 
-https://code.visualstudio.com/[Microsoft Visual Studio Code] (VS Code) desktop is an MCP client that supports OAuth Client ID Metadata Document. When VS Code desktop connects to an MCP server that requires authorization, it sends an authorization request with a `client_id` parameter that is an `https` URL hosted on `vscode.dev` (e.g., `+https://vscode.dev/mcp-client+` or `+https://insiders.vscode.dev/mcp-client+`). {project_name} fetches the Client ID Metadata Document from this URL and uses the metadata to process the request.
+https://code.visualstudio.com/[Microsoft Visual Studio Code] (VS Code) desktop is an MCP client that supports OAuth Client ID Metadata Document. When VS Code desktop connects to an MCP server that requires authorization, it sends an authorization request with a `client_id` parameter that is an `https` URL hosted on `vscode.dev` (e.g., `+https://vscode.dev/mcp-client+`). {project_name} fetches the Client ID Metadata Document from this URL and uses the metadata to process the request.
 
 VS Code desktop uses localhost callbacks for the OAuth redirect. It starts a local HTTP server and uses a redirect URI such as `+http://127.0.0.1:<port>/callback+`. Because the redirect URI is on `127.0.0.1` rather than on the `vscode.dev` domain, the *Restrict same domain* option in the client profile executor must be set to `OFF`.
 
@@ -241,7 +241,7 @@ bin/kc.[sh|bat] start --features=cimd
 . Configure the executor with the following options:
 +
 * *Allow http scheme*: `OFF`
-* *Trusted domains*: `(.*\.)?vscode\.dev` (this matches both `vscode.dev` and `insiders.vscode.dev`)
+* *Trusted domains*: `vscode\.dev`
 * *Restrict same domain*: `OFF` (VS Code desktop uses a localhost redirect URI such as `+http://127.0.0.1:<port>/callback+`, which is not on the same domain as `vscode.dev`)
 * *Only Allow Confidential Client*: `OFF` (VS Code desktop is a public client)
 +
@@ -256,7 +256,7 @@ bin/kc.[sh|bat] start --features=cimd
 . Configure the condition with the following options:
 +
 * *URI scheme*: `https`
-* *Trusted domains*: `(.*\.)?vscode\.dev`
+* *Trusted domains*: `vscode\.dev`
 +
 . Click *Save*.
 . Under *Associated client profiles*, add the `vscode-cimd-profile` profile created in the previous step.
