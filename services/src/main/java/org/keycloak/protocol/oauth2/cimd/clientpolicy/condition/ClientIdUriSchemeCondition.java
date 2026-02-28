@@ -72,7 +72,7 @@ public class ClientIdUriSchemeCondition extends AbstractClientPolicyConditionPro
         switch (context.getEvent()) {
             case PRE_AUTHORIZATION_REQUEST:
                 PreAuthorizationRequestContext paContext = (PreAuthorizationRequestContext) context;
-                String clientId = ((PreAuthorizationRequestContext) context).getRequestParameters().getFirst(OAuth2Constants.CLIENT_ID);
+                String clientId = paContext.getRequestParameters().getFirst(OAuth2Constants.CLIENT_ID);
                 if (isUriSchemeMatched(clientId) && isTrustedDomainMatched(clientId)) return ClientPolicyVote.YES;
                 return ClientPolicyVote.NO;
             default:

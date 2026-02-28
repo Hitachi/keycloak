@@ -1,8 +1,10 @@
 package org.keycloak.protocol.oauth2.cimd.clientpolicy.executor;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -362,10 +364,10 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         validateClientMetadata(clientIdURI, redirectUriURI, clientOIDCWithCacheControl.getOidcClientRepresentation());
 
         if (fetchOp == FetchOperation.CREATE) {
-            // Update Client Metadata
+            // Create Client Metadata
             provider.createClientMetadata(clientOIDCWithCacheControl);
         } else if (fetchOp == FetchOperation.UPDATE) {
-            // Create Client Metadata
+            // Update Client Metadata
             provider.updateClientMetadata(clientOIDCWithCacheControl);
         }
     }
@@ -396,6 +398,7 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
 
     // Client ID / Client Metadata Verification Errors
     public static final String ERR_HOST_UNRESOLVED = "Invalid Client ID / Metadata: host unresolved.";
+    public static final String ERR_SSRF_BLOCKED = "Invalid Client ID / Metadata: host resolves to a blocked network address.";
 
     // Client Metadata Validation Errors
     public static final String ERR_METADATA_URIS_SAMEDOMAIN = "Invalid Client Metadata: client_id parameter, redirect_uri parameter and at least one of redirect_uris properties in client metadata should be under the same domain.";
@@ -547,7 +550,7 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
      * @param isUpdate indicates the client metadata has been already created
      * @param provider {@link ClientIdMetadataDocumentProvider} for updating cache expiry time
      * @return {@code OIDCClientRepresentationWithCacheControl} a combination of a client metadata and Cache-Control header value accompanied by the metadata response.
-     * {@code null} if a client metadata was re-fetched but the HTTP response status code is 307 Not Modified.
+     * {@code null} if a client metadata was re-fetched but the HTTP response status code is 304 Not Modified.
      * @throws ClientPolicyException when fetching a client metadata fails.
      */
     protected OIDCClientRepresentationWithCacheControl fetchClientMetadata(final URI clientIdURI, final boolean isUpdate,
@@ -653,7 +656,7 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         //  It checks if an address resolved from a property whose value is URI is loopback address.
         //  It checks if an address resolved from a property whose value is URI is private address.
         // CIMD (mandatory): client_id
-        // RFC 7591 (mandagory): redirect_uris
+        // RFC 7591 (mandatory): redirect_uris
         // RFC 7591 (optional): logo_uri, client_uri, tos_uri, policy_uri, jwks_uri
         verifyUri(clientOIDC.getClientId(), (error, logMessageTemplate) -> {
             getLogger().warnv(logMessageTemplate, "client_id", clientOIDC.getClientId());
@@ -740,6 +743,52 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         if (trustedDomains.stream().noneMatch(i->checkTrustedDomain(uri.getHost(), i))) {
             getLogger().warnv("not trusted domain: host = {0}", uri.getHost());
             throw invalidClientIdMetadata(ERR_NOTALLOWED_DOMAIN);
+        }
+
+        // SSRF countermeasure: resolve the hostname and check if the address is a loopback,
+        // private (site-local), or link-local address to prevent server-side request forgery.
+        // Skip this check only when allowHttpScheme is enabled (development environment only).
+        if (!getConfiguration().isAllowHttpScheme()) {
+            verifyNotInternalAddress(uri.getHost());
+        }
+    }
+
+    /**
+     * Resolves the hostname to an IP address and verifies it is not a loopback, site-local (private),
+     * or link-local address. This prevents SSRF attacks where a trusted domain's DNS resolves
+     * to an internal network address.
+     *
+     * <p>If the hostname cannot be resolved, the check is skipped because there is no SSRF risk
+     * (the subsequent HTTP fetch will fail anyway).
+     *
+     * @param host the hostname to verify
+     * @throws ClientPolicyException if the host resolves to a blocked address
+     */
+    private void verifyNotInternalAddress(String host) throws ClientPolicyException {
+        final InetAddress addr;
+        try {
+            addr = InetAddress.getByName(host);
+        } catch (UnknownHostException e) {
+            // If the host cannot be resolved, there is no SSRF risk since the HTTP request will also fail.
+            getLogger().debugv("SSRF check: host cannot be resolved (will fail at fetch): host = {0}", host);
+            return;
+        }
+
+        if (addr.isLoopbackAddress()) {
+            getLogger().warnv("SSRF blocked: host resolves to loopback address: host = {0}", host);
+            throw invalidClientIdMetadata(ERR_SSRF_BLOCKED);
+        }
+        if (addr.isSiteLocalAddress()) {
+            getLogger().warnv("SSRF blocked: host resolves to private address: host = {0}", host);
+            throw invalidClientIdMetadata(ERR_SSRF_BLOCKED);
+        }
+        if (addr.isLinkLocalAddress()) {
+            getLogger().warnv("SSRF blocked: host resolves to link-local address: host = {0}", host);
+            throw invalidClientIdMetadata(ERR_SSRF_BLOCKED);
+        }
+        if (addr.isAnyLocalAddress()) {
+            getLogger().warnv("SSRF blocked: host resolves to wildcard address: host = {0}", host);
+            throw invalidClientIdMetadata(ERR_SSRF_BLOCKED);
         }
     }
 

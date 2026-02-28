@@ -176,6 +176,7 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
                                 createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                    it.setAllowHttpScheme(true);
                                     it.setTrustedDomains(List.of("*.example.com","localhost"));
                                     it.setRestrictSameDomain(true);
                                     it.setRequiredProperties(List.of("scope", "logo_uri", "client_uri", "tos_uri", "policy_uri", "jwks_uri"));}))
@@ -304,6 +305,7 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
                                 createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                    it.setAllowHttpScheme(true);
                                     it.setTrustedDomains(List.of("*.example.com","localhost"));
                                     it.setRestrictSameDomain(true);
                                     it.setRequiredProperties(List.of("scope", "logo_uri", "client_uri", "tos_uri", "policy_uri"));}))
@@ -397,6 +399,7 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
                                 createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                    it.setAllowHttpScheme(true);
                                     it.setTrustedDomains(List.of("*.example.com","localhost"));
                                     it.setRestrictSameDomain(true);
                                     it.setRequiredProperties(List.of("logo_uri", "scope"));}))
@@ -555,8 +558,9 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
         String  json = (new ClientPoliciesUtil.ClientProfilesBuilder()).addProfile(
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
-                                createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->
-                                        it.setTrustedDomains(List.of("*.example.com","localhost"))))
+                                createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                        it.setAllowHttpScheme(true);
+                                        it.setTrustedDomains(List.of("*.example.com","localhost"));}))
                         .toRepresentation()
         ).toString();
         updateProfiles(json);
@@ -689,8 +693,9 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
         String  json = (new ClientPoliciesUtil.ClientProfilesBuilder()).addProfile(
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
-                                createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->
-                                        it.setTrustedDomains(List.of("*.example.com","localhost"))))
+                                createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                        it.setAllowHttpScheme(true);
+                                        it.setTrustedDomains(List.of("*.example.com","localhost"));}))
                         .toRepresentation()
         ).toString();
         updateProfiles(json);
@@ -757,8 +762,9 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
         String  json = (new ClientPoliciesUtil.ClientProfilesBuilder()).addProfile(
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
-                                createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->
-                                        it.setTrustedDomains(List.of("*.example.com","localhost"))))
+                                createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                        it.setAllowHttpScheme(true);
+                                        it.setTrustedDomains(List.of("*.example.com","localhost"));}))
                         .toRepresentation()
         ).toString();
         updateProfiles(json);
@@ -946,10 +952,11 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
         String  json = (new ClientPoliciesUtil.ClientProfilesBuilder()).addProfile(
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
-                                createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->
+                                createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                        it.setAllowHttpScheme(true);
                                         it.setTrustedDomains(List.of("*.example.com", "localhost",
                                         "mcpclient.example.org", "www.example.org",
-                                        "[::1]", "client.example.com"))))
+                                        "[::1]", "client.example.com"));}))
                         .toRepresentation()
         ).toString();
         updateProfiles(json);
@@ -1084,6 +1091,7 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
                                 createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                        it.setAllowHttpScheme(true);
                                         it.setOnlyAllowConfidentialClient(true);
                                         it.setTrustedDomains(List.of("*.example.com", "localhost"));
                                 }))
@@ -1131,6 +1139,7 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
                                 createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                    it.setAllowHttpScheme(true);
                                     it.setOnlyAllowConfidentialClient(false);
                                     it.setTrustedDomains(List.of("*.example.com", "localhost", "www.example.co.jp"));
                                     it.setRestrictSameDomain(true);
@@ -1152,6 +1161,7 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
                                 createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                    it.setAllowHttpScheme(true);
                                     it.setRequiredProperties(List.of("client_uri", "logo_uri"));
                                     it.setTrustedDomains(List.of("*.example.com", "[::1]", "localhost", "127.0.0.1"));
                                 }))
@@ -1169,6 +1179,7 @@ public class ClientIdMetadataDocumentTest extends AbstractClientPoliciesTest {
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "Le Premier Profil")
                         .addExecutor(ClientIdMetadataDocumentExecutorFactory.PROVIDER_ID,
                                 createExecutorConfig(new ClientIdMetadataDocumentExecutor.Configuration(), it->{
+                                    it.setAllowHttpScheme(true);
                                     it.setRestrictSameDomain(true);
                                     it.setTrustedDomains(List.of("*.example.org", "localhost", "[::1]", "127.0.0.1"));
                                 }))

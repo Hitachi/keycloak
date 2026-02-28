@@ -77,6 +77,7 @@ public abstract class AbstractClientIdMetadataDocumentExecutorFactory
                 ALLOW_HTTP_SCHEME,
                 "Allow http scheme",
                 "If ON, then the executor allows http scheme as a valid Client ID URL and property of Client Metadata whose value is URL: client_uri, logo_uri, tos_uri, policy_uri, jwks_uri. " +
+                        "It also disables SSRF protection that blocks loopback and private network addresses. " +
                         "It can be ON only for development environment. It must be OFF in production environment. ",
                 ProviderConfigProperty.BOOLEAN_TYPE,
                 false);
@@ -89,10 +90,9 @@ public abstract class AbstractClientIdMetadataDocumentExecutorFactory
                 "If some domains are filled, the executor only accepts the following URL-formatted parameters whose host part matches one of the filled domains: " +
                         "Authorization request parameters: client_id, redirect_uri, " +
                         "Client metadata properties: client_id, redirect_uris, jwks_uri, logo_uri, policy_uri, tos_uri, client_uri. " +
-                        "The domains are checked by using regex. " +
+                        "The domains are checked by using wildcard matching. " +
                         "If the domains not filled, the executor denies all such the parameters and properties. " +
-                        "For example, use pattern like this '(.*)\\.example\\.org' if you want to accept the parameter / property whose domain is 'example.org'." +
-                        "Don't forget to use escaping of special characters like dots as otherwise dot is interpreted as any character in regex!",
+                        "For example, use pattern like this '*.example.org' if you want to accept the parameter / property whose domain is 'example.org' or any subdomain of it.",
                 ProviderConfigProperty.MULTIVALUED_STRING_TYPE,
                 null);
         configProperties.add(property);
