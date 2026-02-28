@@ -672,11 +672,21 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         for (String redirect_uri : clientOIDC.getRedirectUris()) {
             verifyClientMetadataUri("redirect_uris", redirect_uri);
         }
-        verifyClientMetadataUri("logo_uri", clientOIDC.getLogoUri());
-        verifyClientMetadataUri("client_uri", clientOIDC.getClientUri());
-        verifyClientMetadataUri("tos_uri", clientOIDC.getTosUri());
-        verifyClientMetadataUri("policy_uri", clientOIDC.getPolicyUri());
-        verifyClientMetadataUri("jwks_uri", clientOIDC.getJwksUri());
+        if (clientOIDC.getLogoUri() != null) {
+            verifyClientMetadataUri("logo_uri", clientOIDC.getLogoUri());
+        }
+        if (clientOIDC.getClientUri() != null) {
+            verifyClientMetadataUri("client_uri", clientOIDC.getClientUri());
+        }
+        if (clientOIDC.getTosUri() != null) {
+            verifyClientMetadataUri("tos_uri", clientOIDC.getTosUri());
+        }
+        if (clientOIDC.getPolicyUri() != null) {
+            verifyClientMetadataUri("policy_uri", clientOIDC.getPolicyUri());
+        }
+        if (clientOIDC.getJwksUri() != null) {
+            verifyClientMetadataUri("jwks_uri", clientOIDC.getJwksUri());
+        }
 
         URI clientIdURIfromMetadata;
         try {
@@ -691,9 +701,6 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
     }
 
     private void verifyClientMetadataUri(String fieldName, String uriValue) throws ClientPolicyException {
-        if (uriValue == null) {
-            return;
-        }
         verifyUri(uriValue, (error, logMessageTemplate) -> {
             getLogger().warnv(logMessageTemplate, fieldName, uriValue);
             throw invalidClientIdMetadata(error);
