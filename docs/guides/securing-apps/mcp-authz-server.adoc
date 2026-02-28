@@ -198,6 +198,8 @@ To configure the condition, create a client policy in the {project_name} Admin C
 . Under *Associated client profiles*, add the `cimd-profile` profile created in the previous step.
 . Click *Save*.
 
+With this configuration, when an MCP client sends an authorization request with a `client_id` value that is an `https` URL matching a trusted domain, {project_name} fetches the Client ID Metadata Document from that URL and uses the metadata to process the request.
+
 ===== System-wide settings for the Client ID Metadata Document executor
 
 The `client-id-metadata-document` executor has the following system-wide settings that control caching and metadata size limits. These settings cannot be configured through the Admin Console. Instead, they are configured as SPI options when starting {project_name}.
@@ -211,8 +213,6 @@ To configure these settings, use the `--spi-client-policy-executor--client-id-me
 ```bash
 bin/kc.[sh|bat] start --spi-client-policy-executor--client-id-metadata-document--min-cache-time=600 --spi-client-policy-executor--client-id-metadata-document--max-cache-time=86400 --spi-client-policy-executor--client-id-metadata-document--upper-limit-metadata-bytes=10000
 ```
-
-With this configuration, when an MCP client sends an authorization request with a `client_id` value that is an `https` URL matching a trusted domain, {project_name} fetches the Client ID Metadata Document from that URL and uses the metadata to process the request.
 
 
 </@tmpl.guide>
