@@ -724,7 +724,7 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         return UNSAFE_PATH_PATTERN.matcher(redirectUri.getRawPath()).find();
     }
 
-    private void verifyUri(String uriString, ErrorHandler errorHandler) throws ClientPolicyException {
+    void verifyUri(String uriString, ErrorHandler errorHandler) throws ClientPolicyException {
         // allow trusted domain
         List<String> trustedDomains = convertContentFilledList(getConfiguration().getTrustedDomains());
         if (trustedDomains == null || trustedDomains.isEmpty()) {
@@ -754,21 +754,21 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
             throw invalidClientIdMetadata(ERR_NOTALLOWED_DOMAIN);
         }
 
-        if (!getConfiguration().isAllowHttpScheme()) {
-            verifyNotInternalAddress(uri.getHost(), errorHandler);
+        if (!getConfiguration().isAllowHttpScheme() && isInternalAddress(uri.getHost())) {
+            throw invalidClientIdMetadata(ERR_NOTALLOWED_DOMAIN);
         }
     }
 
-    private void verifyNotInternalAddress(String host, ErrorHandler errorHandler) throws ClientPolicyException {
+    private boolean isInternalAddress(String host) throws ClientPolicyException {
         try {
             for (InetAddress resolvedAddress : InetAddress.getAllByName(host)) {
                 if (resolvedAddress.isAnyLocalAddress() || resolvedAddress.isLoopbackAddress() || resolvedAddress.isSiteLocalAddress() || resolvedAddress.isLinkLocalAddress()) {
-                    errorHandler.onError(ERR_NOTALLOWED_DOMAIN, "not allowed private/loopback address: {0} property in metadata = {1}");
-                    return;
+                    return true;
                 }
             }
+            return false;
         } catch (UnknownHostException e) {
-            errorHandler.onError(ERR_HOST_UNRESOLVED, "host part unresolved: {0} property in metadata = {1}");
+            throw invalidClientIdMetadata(ERR_HOST_UNRESOLVED);
         }
     }
 

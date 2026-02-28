@@ -17,8 +17,6 @@
 
 package org.keycloak.protocol.oauth2.cimd.clientpolicy.executor;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.List;
 
 import org.junit.Test;
@@ -66,16 +64,13 @@ public class ClientIdMetadataDocumentExecutorTest {
             invokeVerifyUri(executor, uriString);
             fail("Expected ClientPolicyException to be thrown");
             return null;
-        } catch (InvocationTargetException e) {
-            assertTrue(e.getCause() instanceof ClientPolicyException);
-            return (ClientPolicyException) e.getCause();
+        } catch (ClientPolicyException e) {
+            return e;
         }
     }
 
     private static void invokeVerifyUri(ClientIdMetadataDocumentExecutor executor, String uriString) throws Exception {
-        Method method = AbstractClientIdMetadataDocumentExecutor.class.getDeclaredMethod("verifyUri", String.class, AbstractClientIdMetadataDocumentExecutor.ErrorHandler.class);
-        method.setAccessible(true);
-        method.invoke(executor, uriString, (AbstractClientIdMetadataDocumentExecutor.ErrorHandler) (error, logMessageTemplate) -> {
+        executor.verifyUri(uriString, (AbstractClientIdMetadataDocumentExecutor.ErrorHandler) (error, logMessageTemplate) -> {
             throw AbstractClientIdMetadataDocumentExecutor.invalidClientIdMetadata(error);
         });
     }
