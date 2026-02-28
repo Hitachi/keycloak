@@ -65,6 +65,24 @@ To avoid this, you can skip this check by adding the following property:
     -DskipProtoLock=true
 
 ---
+**NOTE**
+
+When building behind a proxy, the JavaScript build (which downloads dependencies and generates code using Node.js) may
+fail with `ETIMEDOUT` errors. To resolve this, set the following environment variables before running Maven:
+
+    export HTTP_PROXY=http://your-proxy:port
+    export HTTPS_PROXY=http://your-proxy:port
+    export NO_PROXY=localhost,127.0.0.1
+    export NODE_USE_ENV_PROXY=1
+
+The `NODE_USE_ENV_PROXY=1` variable (supported by Node.js v24+) instructs Node.js to use the proxy environment variables
+for all HTTP/HTTPS requests made by built-in modules. These environment variables are inherited by pnpm and all child
+Node.js processes started during the build.
+
+Do **not** set `pnpmInheritsProxyConfigFromMaven` to `true` in `js/pom.xml`, as this passes `--proxy` and `--https-proxy`
+CLI arguments to all pnpm commands, which causes errors with tools like wireit that do not recognize these arguments.
+
+---
 
 ### Starting Keycloak
 

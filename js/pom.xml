@@ -59,9 +59,6 @@
                         <pnpmVersion>${pnpm.version}</pnpmVersion>
                         <installDirectory>${maven.multiModuleProjectDirectory}/js</installDirectory>
                         <pnpmInheritsProxyConfigFromMaven>false</pnpmInheritsProxyConfigFromMaven>
-                        <environmentVariables>
-                            <NODE_USE_ENV_PROXY>1</NODE_USE_ENV_PROXY>
-                        </environmentVariables>
                     </configuration>
                 </plugin>
             </plugins>
