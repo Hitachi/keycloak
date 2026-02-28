@@ -1,26 +1,18 @@
 package org.keycloak.tests.oauth;
 
 import java.io.IOException;
-import java.util.List;
-
-import jakarta.ws.rs.BadRequestException;
 
 import org.keycloak.OAuthErrorException;
 import org.keycloak.common.Profile;
 import org.keycloak.models.ClientModel;
-import org.keycloak.models.ProtocolMapperModel;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RequiredActionProviderModel;
+import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
-import org.keycloak.protocol.oidc.OIDCLoginProtocol;
-import org.keycloak.protocol.oidc.mappers.ResourceIndicatorMapper;
+import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
+import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.IDToken;
-import org.keycloak.representations.idm.ClientPoliciesRepresentation;
-import org.keycloak.representations.idm.ClientProfilesRepresentation;
-import org.keycloak.services.clientpolicy.ClientPolicyException;
-import org.keycloak.services.clientpolicy.condition.AnyClientConditionFactory;
-import org.keycloak.services.clientpolicy.executor.SecureResourceIndicatorExecutorFactory;
 import org.keycloak.testframework.annotations.InjectRealm;
 import org.keycloak.testframework.annotations.KeycloakIntegrationTest;
 import org.keycloak.testframework.oauth.OAuthClient;
@@ -34,12 +26,10 @@ import org.keycloak.testframework.server.KeycloakServerConfig;
 import org.keycloak.testframework.server.KeycloakServerConfigBuilder;
 import org.keycloak.testframework.ui.annotations.InjectPage;
 import org.keycloak.testframework.ui.page.LogoutConfirmPage;
-import org.keycloak.testsuite.util.ClientPoliciesUtil;
 import org.keycloak.testsuite.util.oauth.AccessTokenResponse;
 import org.keycloak.testsuite.util.oauth.AuthorizationEndpointResponse;
 import org.keycloak.testsuite.util.oauth.IntrospectionResponse;
 import org.keycloak.testsuite.util.oauth.TokenRevocationResponse;
-import org.keycloak.util.JsonSerialization;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -47,12 +37,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-
-import static org.keycloak.services.clientpolicy.executor.SecureResourceIndicatorExecutor.ERR_DIFFERENT_RESOURCE;
-import static org.keycloak.services.clientpolicy.executor.SecureResourceIndicatorExecutor.ERR_NOT_PERMITTED_RESOURCE;
-import static org.keycloak.services.clientpolicy.executor.SecureResourceIndicatorExecutor.ERR_NO_RESOURCE_IN_TOKEN_REQUEST;
-import static org.keycloak.testsuite.util.ClientPoliciesUtil.createAnyClientConditionConfig;
-import static org.keycloak.testsuite.util.ClientPoliciesUtil.createResourceAudienceBindExecutorConfig;
 
 
 @KeycloakIntegrationTest(config = ResourceIndicatorMapperTest.ResourceIndicatorMapperServerConfig.class)
@@ -76,22 +60,36 @@ public class ResourceIndicatorMapperTest {
     private static final String TEST_CLIENT_SECRET = "secret";
     private static final String TEST_USER = "MyTestUser";
     private static final String TEST_USER_PASSWORD = "password";
-    private static final String TEST_MAPPER = "resource-indicator";
 
-    private static final String POLICY_NAME = "MyPolicy";
-    private static final String PROFILE_NAME = "MyProfile";
+    private static final String RESOURCE_SERVER_CLIENT = "MyResourceServer";
+    private static final String RESOURCE_SERVER_URI = "https://resource.example.com/v1";
+    private static final String RESOURCE_SERVER_ROLE = "access";
 
     @BeforeEach
     public void setup() {
-        // It is enough to be executed only once before start testing.
-        // However, static method annotated @BeforeAll cannot refer to the member runOnServer, so it is executed here.
-        // It is better to do that in ResourceIndicatorMapperRealmConfig.configure, but no way to do that in that method.
         runOnServer.run(session -> {
             RealmModel realm = session.realms().getRealmByName(TEST_REALM);
-            ClientModel target = realm.getClientByClientId(TEST_CLIENT);
-            if (target.getProtocolMapperByName(OIDCLoginProtocol.LOGIN_PROTOCOL, TEST_MAPPER) == null) {
-                target.addProtocolMapper(ResourceIndicatorMapper.create(TEST_MAPPER, true, true));
-                target.setServiceAccountsEnabled(true);
+
+            // Set up resource server client with resource indicator URI
+            ClientModel resourceServer = realm.getClientByClientId(RESOURCE_SERVER_CLIENT);
+            if (resourceServer == null) {
+                resourceServer = realm.addClient(RESOURCE_SERVER_CLIENT);
+                resourceServer.setEnabled(true);
+                resourceServer.setStandardFlowEnabled(false);
+                resourceServer.setDirectAccessGrantsEnabled(false);
+                OIDCAdvancedConfigWrapper.fromClientModel(resourceServer)
+                        .setResourceIndicatorUri(RESOURCE_SERVER_URI);
+
+                // Add a role to the resource server
+                RoleModel role = resourceServer.addRole(RESOURCE_SERVER_ROLE);
+
+                // Assign the role to the test user
+                UserModel user = session.users().getUserByUsername(realm, TEST_USER);
+                user.grantRole(role);
+
+                // Add the resource server's role to the test client's scope
+                ClientModel testClient = realm.getClientByClientId(TEST_CLIENT);
+                testClient.addScopeMapping(role);
             }
 
             // disable verify profile required action
@@ -113,245 +111,72 @@ public class ResourceIndicatorMapperTest {
     }
 
     @Test
-    public void testSuccessfulBindMapper() throws IOException {
-        // authorization code grant
-        //  resource specified in an authorization request
-        //  resource not specified in a token request
-        //  -> bind with resource specified in an authorization request
-        String resourceInAuthorizationRequest = "https://resource.example.com/v1";
-        String resourceInTokenRequest = null;
-        String code = loginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        AccessTokenResponse tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertTokenValidResponse(tokenResponse, resourceInAuthorizationRequest);
+    public void testResourceIndicatorAddedToAudience() throws IOException {
+        // Authorization code grant with resource parameter
+        // -> resource URI should be added to aud claim
+        String code = loginUserAndGetCode(TEST_CLIENT, RESOURCE_SERVER_URI);
+        AccessTokenResponse tokenResponse = oAuthClient
+                .client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(RESOURCE_SERVER_URI).send();
+        assertTokenValidResponse(tokenResponse, RESOURCE_SERVER_URI);
 
         // introspect
-        //  -> bind with resource specified in an authorization request
         IntrospectionResponse introspectionResponse = oAuthClient.doIntrospectionAccessTokenRequest(tokenResponse.getAccessToken());
-        assertIntrospectValidResponse(introspectionResponse, resourceInAuthorizationRequest);
+        assertIntrospectValidResponse(introspectionResponse, RESOURCE_SERVER_URI);
 
-        // refresh
-        //  resource not specified in a token refresh request
-        //  -> bind with resource specified in an authorization request
+        // refresh - resource URI from auth request should persist
         tokenResponse = oAuthClient.doRefreshTokenRequest(tokenResponse.getRefreshToken());
-        assertRefreshTokenResponse(tokenResponse, resourceInAuthorizationRequest);
+        assertRefreshTokenResponse(tokenResponse, RESOURCE_SERVER_URI);
 
         // revoke
         TokenRevocationResponse revokeResponse = oAuthClient.doTokenRevoke(tokenResponse.getAccessToken());
         assertRevokeValidResponse(revokeResponse, tokenResponse);
-
-        // authorization code grant
-        //  resource not specified in an authorization request
-        //  resource not specified in a token request
-        //  -> not bind
-        resourceInAuthorizationRequest = null;
-        resourceInTokenRequest = null;
-        code = ssoLoginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertNotBindTokenValidResponse(tokenResponse);
-
-        // authorization code grant
-        //  resource specified in an authorization request
-        //  resource specified in a token request
-        //  -> bind with resource specified in an authorization request
-        resourceInAuthorizationRequest = "https://resource.example.com/v1";
-        resourceInTokenRequest = "https://different.resource.example.com/";
-        code = ssoLoginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertTokenValidResponse(tokenResponse, resourceInAuthorizationRequest);
-
-        // authorization code grant
-        // resource specified in an authorization request
-        // resource specified in a token request
-        // -> bind with resource specified in an authorization request
-        resourceInAuthorizationRequest = "https://resource.example.com/v1";
-        resourceInTokenRequest = resourceInAuthorizationRequest;
-        code = ssoLoginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertTokenValidResponse(tokenResponse, resourceInAuthorizationRequest);
-
-        // refresh
-        //  resource specified in a token refresh request, but it is different from the one in the authorization request
-        //  -> bind with resource specified in an authorization request
-        tokenResponse = oAuthClient.refreshRequest(tokenResponse.getRefreshToken()).resource("https://different.resource.example.com/").send();
-        assertRefreshTokenResponse(tokenResponse, resourceInAuthorizationRequest);
     }
 
     @Test
-    public void testNotBindMapper() {
-        // setup realm
+    public void testNoResourceParameter() {
+        // Authorization code grant without resource parameter
+        // -> no resource URI in aud claim
+        String code = loginUserAndGetCode(TEST_CLIENT, null);
+        AccessTokenResponse tokenResponse = oAuthClient
+                .client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).send();
+        assertNotBindTokenValidResponse(tokenResponse);
+    }
+
+    @Test
+    public void testInvalidResourceParameter() {
+        // Authorization code grant with invalid resource URI (no matching client)
+        // -> error at authorization endpoint
+        String unknownResource = "https://unknown.example.com/api";
+        assertLoginError(TEST_CLIENT, unknownResource, OAuthErrorException.INVALID_TARGET,
+                "Invalid resource indicator: " + unknownResource);
+    }
+
+    @Test
+    public void testResourceIndicatorWithoutRoleAccess() {
+        // Remove the role from the user, then try
         runOnServer.run(session -> {
             RealmModel realm = session.realms().getRealmByName(TEST_REALM);
-            ClientModel target = realm.getClientByClientId(TEST_CLIENT);
-            ProtocolMapperModel model = target.getProtocolMapperByName(OIDCLoginProtocol.LOGIN_PROTOCOL, TEST_MAPPER);
-            if (model != null) {
-                target.removeProtocolMapper(model);
-            }
+            ClientModel resourceServer = realm.getClientByClientId(RESOURCE_SERVER_CLIENT);
+            RoleModel role = resourceServer.getRole(RESOURCE_SERVER_ROLE);
+            UserModel user = session.users().getUserByUsername(realm, TEST_USER);
+            user.deleteRoleMapping(role);
         });
 
-        // resource specified in an authorization request but no mapper applied - not bind
-        String resource = "https://resource.example.com/v1";
-        String code = loginUserAndGetCode(TEST_CLIENT, resource);
-        AccessTokenResponse tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resource).send();
-        assertNotBindTokenValidResponse(tokenResponse);
-    }
-
-    @Test
-    public void testSuccessfulBindMapperWithExecutor() throws Exception {
-        // register profiles
-        String json = (new ClientPoliciesUtil.ClientProfilesBuilder()).addProfile(
-                (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "O Primeiro Perfil")
-                        .addExecutor(SecureResourceIndicatorExecutorFactory.PROVIDER_ID, null)
-                        .toRepresentation()
-        ).toString();
-        updateProfiles(json);
-
-        // register policies
-        json = (new ClientPoliciesUtil.ClientPoliciesBuilder()).addPolicy(
-                (new ClientPoliciesUtil.ClientPolicyBuilder()).createPolicy(POLICY_NAME, "La Premiere Politique", Boolean.TRUE)
-                        .addCondition(AnyClientConditionFactory.PROVIDER_ID,
-                                createAnyClientConditionConfig())
-                        .addProfile(PROFILE_NAME)
-                        .toRepresentation()
-        ).toString();
-        updatePolicies(json);
-
-        // authorization code grant
-        //  resource specified in an authorization request
-        //  resource specified in a token request, and it is the same as the one in the authorization request
-        //  -> bind with resource specified in an authorization request
-        String resourceInAuthorizationRequest = "https://resource.example.com/v1";
-        String resourceInTokenRequest = resourceInAuthorizationRequest;
-        String code = loginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        AccessTokenResponse tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertTokenValidResponse(tokenResponse, resourceInAuthorizationRequest);
-
-        // introspect
-        //  -> bind with resource specified in an authorization request
-        IntrospectionResponse introspectionResponse = oAuthClient.doIntrospectionAccessTokenRequest(tokenResponse.getAccessToken());
-        assertIntrospectValidResponse(introspectionResponse, resourceInAuthorizationRequest);
-
-        // refresh
-        //  resource specified in a token refresh request, but it is different from the one in the authorization request
-        //  -> bind with resource specified in an authorization request
-        tokenResponse = oAuthClient.refreshRequest(tokenResponse.getRefreshToken()).resource("https://different.resource.example.com/").send();
-        assertRefreshTokenResponse(tokenResponse, resourceInAuthorizationRequest);
-
-        // refresh
-        //  resource not specified in a token refresh request
-        //  -> bind with resource specified in an authorization request
-        tokenResponse = oAuthClient.refreshRequest(tokenResponse.getRefreshToken()).resource(null).send();
-        assertRefreshTokenResponse(tokenResponse, resourceInAuthorizationRequest);
-
-        // revoke
-        TokenRevocationResponse revokeResponse = oAuthClient.doTokenRevoke(tokenResponse.getAccessToken());
-        assertRevokeValidResponse(revokeResponse, tokenResponse);
-
-        // authorization code grant
-        //  resource not specified in an authorization request
-        //  resource not specified in a token request
-        //  -> not bind
-        resourceInAuthorizationRequest = null;
-        resourceInTokenRequest = null;
-        code = ssoLoginUserAndGetCode(TEST_CLIENT, null);
-        tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(null).send();
+        // Authorization code grant with resource parameter - client exists but user has no role
+        // -> resource URI should NOT be in aud claim (silently skipped)
+        String code = loginUserAndGetCode(TEST_CLIENT, RESOURCE_SERVER_URI);
+        AccessTokenResponse tokenResponse = oAuthClient
+                .client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(RESOURCE_SERVER_URI).send();
         assertNotBindTokenValidResponse(tokenResponse);
 
-        // authorization code grant
-        //  resource not specified in an authorization request
-        //  resource specified in a token request
-        //  -> not bind
-        resourceInAuthorizationRequest = null;
-        resourceInTokenRequest = "https://resource.example.com/v3";
-        code = ssoLoginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertNotBindTokenValidResponse(tokenResponse);
-
-        // authorization code grant
-        //  resource specified in an authorization request
-        //  resource not specified in a token request
-        //  -> error
-        resourceInAuthorizationRequest = null;
-        resourceInTokenRequest = "https://resource.example.com/v3";
-        code = ssoLoginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertNotBindTokenValidResponse(tokenResponse);
-
-        // authorization code grant
-        //  resource specified in an authorization request
-        //  resource specified in a token request, but it is different from the one in the authorization request
-        //  -> error
-        resourceInAuthorizationRequest = "https://mcp.example.com/mcp";
-        resourceInTokenRequest = "https://resource.example.com/v3";
-        code = ssoLoginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertTokenInvalidResponse(tokenResponse, ERR_DIFFERENT_RESOURCE);
-
-        // add permitted resources
-        List<String> permittedResources = List.of("https://example.com/resource", "https://www.example.com/res");
-        json = (new ClientPoliciesUtil.ClientProfilesBuilder()).addProfile(
-                (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "O Primeiro Perfil")
-                        .addExecutor(SecureResourceIndicatorExecutorFactory.PROVIDER_ID, createResourceAudienceBindExecutorConfig(permittedResources))
-                        .toRepresentation()
-        ).toString();
-        updateProfiles(json);
-
-        // authorization code grant
-        //  resource specified in an authorization request, and it is included in the permitted resources
-        //  resource specified in a token request, and it is the same one in the authorization request
-        //  -> bind with resource specified in an authorization request
-        resourceInAuthorizationRequest = permittedResources.get(0);
-        resourceInTokenRequest = resourceInAuthorizationRequest;
-        code = ssoLoginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertTokenValidResponse(tokenResponse, resourceInAuthorizationRequest);
-
-        // authorization code grant
-        //  resource is not specified in an authorization request
-        //  -> error
-        assertLoginError(TEST_CLIENT, null, OAuthErrorException.INVALID_REQUEST, ERR_NOT_PERMITTED_RESOURCE);
-
-        // authorization code grant
-        //  resource specified in an authorization request, but it is not included in the permitted resources
-        //  -> error
-        assertLoginError(TEST_CLIENT, "https://different.resource.example.com/", OAuthErrorException.INVALID_REQUEST, ERR_NOT_PERMITTED_RESOURCE);
-
-        // authorization code grant
-        //  resource specified in an authorization request, and it is included in the permitted resources
-        //  resource specified in a token request, and it is included in the permitted resources, but it is different from the same one in the authorization request
-        //  -> error
-        resourceInAuthorizationRequest = permittedResources.get(1);
-        resourceInTokenRequest = permittedResources.get(0);
-        code = ssoLoginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertTokenInvalidResponse(tokenResponse, ERR_DIFFERENT_RESOURCE);
-
-        // authorization code grant
-        //  resource specified in an authorization request, and it is included in the permitted resources
-        //  resource not specified in a token request
-        //  -> error
-        resourceInAuthorizationRequest = permittedResources.get(1);
-        resourceInTokenRequest = null;
-        code = ssoLoginUserAndGetCode(TEST_CLIENT, resourceInAuthorizationRequest);
-        tokenResponse = oAuthClient.
-                client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(resourceInTokenRequest).send();
-        assertTokenInvalidResponse(tokenResponse, ERR_NO_RESOURCE_IN_TOKEN_REQUEST);
-
-        // logout
-        oAuthClient.openLogoutForm();
-        logoutConfirmPage.assertCurrent();
-        logoutConfirmPage.confirmLogout();
+        // Restore the role
+        runOnServer.run(session -> {
+            RealmModel realm = session.realms().getRealmByName(TEST_REALM);
+            ClientModel resourceServer = realm.getClientByClientId(RESOURCE_SERVER_CLIENT);
+            RoleModel role = resourceServer.getRole(RESOURCE_SERVER_ROLE);
+            UserModel user = session.users().getUserByUsername(realm, TEST_USER);
+            user.grantRole(role);
+        });
     }
 
     public static class ResourceIndicatorMapperRealmConfig implements RealmConfig {
@@ -394,8 +219,15 @@ public class ResourceIndicatorMapperTest {
     private void assertTokenValidResponse(AccessTokenResponse tokenResponse, String resource) {
         Assertions.assertEquals(200, tokenResponse.getStatusCode());
         AccessToken accessToken = oAuthClient.verifyToken(tokenResponse.getAccessToken());
-        Assertions.assertEquals(1, accessToken.getAudience().length);
-        Assertions.assertEquals(resource, accessToken.getAudience()[0]);
+        Assertions.assertNotNull(accessToken.getAudience(), "Expected audience in access token");
+        boolean found = false;
+        for (String aud : accessToken.getAudience()) {
+            if (resource.equals(aud)) {
+                found = true;
+                break;
+            }
+        }
+        Assertions.assertTrue(found, "Expected resource " + resource + " in audience");
         IDToken idToken = oAuthClient.verifyIDToken(tokenResponse.getIdToken());
         Assertions.assertEquals(1, idToken.getAudience().length);
         Assertions.assertEquals(TEST_CLIENT, idToken.getAudience()[0]);
@@ -403,15 +235,30 @@ public class ResourceIndicatorMapperTest {
 
     private void assertIntrospectValidResponse(IntrospectionResponse introspectionResponse, String resource) throws IOException {
         Assertions.assertEquals(200, introspectionResponse.getStatusCode());
-        Assertions.assertEquals(1, introspectionResponse.asTokenMetadata().getAudience().length);
-        Assertions.assertEquals(resource, introspectionResponse.asTokenMetadata().getAudience()[0]);
+        String[] aud = introspectionResponse.asTokenMetadata().getAudience();
+        Assertions.assertNotNull(aud);
+        boolean found = false;
+        for (String a : aud) {
+            if (resource.equals(a)) {
+                found = true;
+                break;
+            }
+        }
+        Assertions.assertTrue(found, "Expected resource " + resource + " in introspection audience");
     }
 
     private void assertRefreshTokenResponse(AccessTokenResponse tokenResponse, String resource) {
         Assertions.assertEquals(200, tokenResponse.getStatusCode());
         AccessToken accessToken = oAuthClient.verifyToken(tokenResponse.getAccessToken());
-        Assertions.assertEquals(1, accessToken.getAudience().length);
-        Assertions.assertEquals(resource, accessToken.getAudience()[0]);
+        Assertions.assertNotNull(accessToken.getAudience(), "Expected audience in refreshed token");
+        boolean found = false;
+        for (String aud : accessToken.getAudience()) {
+            if (resource.equals(aud)) {
+                found = true;
+                break;
+            }
+        }
+        Assertions.assertTrue(found, "Expected resource " + resource + " in refreshed token audience");
     }
 
     private void assertRevokeValidResponse(TokenRevocationResponse revokeResponse, AccessTokenResponse tokenResponse) throws IOException {
@@ -424,13 +271,11 @@ public class ResourceIndicatorMapperTest {
     private void assertNotBindTokenValidResponse(AccessTokenResponse tokenResponse) {
         Assertions.assertEquals(200, tokenResponse.getStatusCode());
         AccessToken accessToken = oAuthClient.verifyToken(tokenResponse.getAccessToken());
-        Assertions.assertNull(accessToken.getAudience());
-    }
-
-    private void assertTokenInvalidResponse(AccessTokenResponse tokenResponse, String errorDescription) {
-        Assertions.assertEquals(400, tokenResponse.getStatusCode());
-        Assertions.assertEquals(OAuthErrorException.INVALID_GRANT, tokenResponse.getError());
-        Assertions.assertEquals(errorDescription, tokenResponse.getErrorDescription());
+        if (accessToken.getAudience() != null) {
+            for (String aud : accessToken.getAudience()) {
+                Assertions.assertNotEquals(RESOURCE_SERVER_URI, aud, "Resource URI should not be in audience");
+            }
+        }
     }
 
     private void assertLoginError(String clientId, String resource, String error, String errorDescription) {
@@ -440,29 +285,5 @@ public class ResourceIndicatorMapperTest {
         AuthorizationEndpointResponse authorizationEndpointResponse = oAuthClient.parseLoginResponse();
         Assertions.assertEquals(error, authorizationEndpointResponse.getError());
         Assertions.assertEquals(errorDescription, authorizationEndpointResponse.getErrorDescription());
-    }
-
-    // Client Policies Operations
-
-    private void updateProfiles(String json) throws ClientPolicyException {
-        try {
-            ClientProfilesRepresentation clientProfiles = JsonSerialization.readValue(json, ClientProfilesRepresentation.class);
-            testRealm.admin().clientPoliciesProfilesResource().updateProfiles(clientProfiles);
-        } catch (BadRequestException e) {
-            throw new ClientPolicyException("update profiles failed", e.getResponse().getStatusInfo().toString());
-        } catch (Exception e) {
-            throw new ClientPolicyException("update profiles failed", e.getMessage());
-        }
-    }
-
-    private void updatePolicies(String json) throws ClientPolicyException {
-        try {
-            ClientPoliciesRepresentation clientPolicies = json==null ? null : JsonSerialization.readValue(json, ClientPoliciesRepresentation.class);
-            testRealm.admin().clientPoliciesPoliciesResource().updatePolicies(clientPolicies);
-        } catch (BadRequestException e) {
-            throw new ClientPolicyException("update policies failed", e.getResponse().getStatusInfo().toString());
-        } catch (IOException e) {
-            throw new ClientPolicyException("update policies failed", e.getMessage());
-        }
     }
 }

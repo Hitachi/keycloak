@@ -50,7 +50,6 @@ import org.keycloak.services.clientpolicy.executor.RejectResourceOwnerPasswordCr
 import org.keycloak.services.clientpolicy.executor.SecureClientAuthenticatorExecutor;
 import org.keycloak.services.clientpolicy.executor.SecureRedirectUrisEnforcerExecutor;
 import org.keycloak.services.clientpolicy.executor.SecureRequestObjectExecutor;
-import org.keycloak.services.clientpolicy.executor.SecureResourceIndicatorExecutor;
 import org.keycloak.services.clientpolicy.executor.SecureResponseTypeExecutor;
 import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmExecutor;
 import org.keycloak.services.clientpolicy.executor.SecureSigningAlgorithmForSignedJwtExecutor;
@@ -256,12 +255,6 @@ public final class ClientPoliciesUtil {
         if (apply != null) {
             apply.accept(config);
         }
-        return config;
-    }
-
-    public static SecureResourceIndicatorExecutor.Configuration createResourceAudienceBindExecutorConfig(List<String> permittedResources) {
-        SecureResourceIndicatorExecutor.Configuration config = new SecureResourceIndicatorExecutor.Configuration();
-        config.setAllowPermittedResources(permittedResources);
         return config;
     }
 

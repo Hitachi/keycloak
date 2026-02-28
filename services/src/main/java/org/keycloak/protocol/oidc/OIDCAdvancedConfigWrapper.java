@@ -503,4 +503,13 @@ public class OIDCAdvancedConfigWrapper extends AbstractClientConfigWrapper {
     public void setMinimumAcrValue(String minimumAcrValue) {
         setAttribute(Constants.MINIMUM_ACR_VALUE, minimumAcrValue);
     }
+
+    // https://datatracker.ietf.org/doc/html/rfc8707
+    public String getResourceIndicatorUri() {
+        return getAttribute(OIDCConfigAttributes.RESOURCE_INDICATOR_URI);
+    }
+
+    public void setResourceIndicatorUri(String uri) {
+        setAttribute(OIDCConfigAttributes.RESOURCE_INDICATOR_URI, uri);
+    }
 }

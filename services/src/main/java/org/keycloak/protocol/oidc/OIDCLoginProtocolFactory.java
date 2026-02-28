@@ -46,6 +46,7 @@ import org.keycloak.protocol.oidc.mappers.AddressMapper;
 import org.keycloak.protocol.oidc.mappers.AllowedWebOriginsProtocolMapper;
 import org.keycloak.protocol.oidc.mappers.AudienceResolveProtocolMapper;
 import org.keycloak.protocol.oidc.mappers.FullNameMapper;
+import org.keycloak.protocol.oidc.mappers.ResourceIndicatorMapper;
 import org.keycloak.protocol.oidc.mappers.SubMapper;
 import org.keycloak.protocol.oidc.mappers.UserAttributeMapper;
 import org.keycloak.protocol.oidc.mappers.UserClientRoleMappingMapper;
@@ -103,6 +104,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
     public static final String REALM_ROLES = "realm roles";
     public static final String CLIENT_ROLES = "client roles";
     public static final String AUDIENCE_RESOLVE = "audience resolve";
+    public static final String RESOURCE_INDICATOR_RESOLVE = "resource indicator resolve";
     public static final String ALLOWED_WEB_ORIGINS = "allowed web origins";
     public static final String ACR = "acr loa level";
     public static final String ORGANIZATION = "organization";
@@ -227,6 +229,11 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
 
         model = AudienceResolveProtocolMapper.createClaimMapper(AUDIENCE_RESOLVE, true, true);
         builtins.put(AUDIENCE_RESOLVE, model);
+
+        if (Profile.isFeatureEnabled(Profile.Feature.RESOURCE_INDICATOR)) {
+            model = ResourceIndicatorMapper.createClaimMapper(RESOURCE_INDICATOR_RESOLVE, true, true);
+            builtins.put(RESOURCE_INDICATOR_RESOLVE, model);
+        }
 
         model = AllowedWebOriginsProtocolMapper.createClaimMapper(ALLOWED_WEB_ORIGINS, true, true);
         builtins.put(ALLOWED_WEB_ORIGINS, model);
@@ -360,6 +367,13 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
             rolesScope.addProtocolMapper(builtins.get(REALM_ROLES));
             rolesScope.addProtocolMapper(builtins.get(CLIENT_ROLES));
             rolesScope.addProtocolMapper(builtins.get(AUDIENCE_RESOLVE));
+
+            if (Profile.isFeatureEnabled(Profile.Feature.RESOURCE_INDICATOR)) {
+                ProtocolMapperModel resourceIndicatorMapper = builtins.get(RESOURCE_INDICATOR_RESOLVE);
+                if (resourceIndicatorMapper != null) {
+                    rolesScope.addProtocolMapper(resourceIndicatorMapper);
+                }
+            }
 
             // 'roles' will be default client scope
             newRealm.addDefaultClientScope(rolesScope, true);

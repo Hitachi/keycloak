@@ -102,6 +102,10 @@ public final class OIDCConfigAttributes {
     public static final String TOS_URI = "tosUri";
     public static final String POLICY_URI = "policyUri";
     public static final String SECTOR_IDENTIFIER_URI = "sectorIdentifierUri";
+
+    // https://datatracker.ietf.org/doc/html/rfc8707
+    public static final String RESOURCE_INDICATOR_URI = "resource.indicator.uri";
+
     private OIDCConfigAttributes() {
     }
 

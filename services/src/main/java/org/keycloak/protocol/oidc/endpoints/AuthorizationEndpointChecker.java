@@ -311,6 +311,26 @@ public class AuthorizationEndpointChecker {
         }
     }
 
+    // https://datatracker.ietf.org/doc/html/rfc8707
+    public void checkResourceIndicator() throws AuthorizationCheckException {
+        if (!Profile.isFeatureEnabled(Profile.Feature.RESOURCE_INDICATOR)) {
+            return;
+        }
+        String resource = request.getResource();
+        if (resource == null || resource.isBlank()) {
+            return;
+        }
+        // Look up the client with matching resource indicator URI
+        ClientModel targetClient = org.keycloak.protocol.oidc.mappers.ResourceIndicatorMapper
+                .findClientByResourceIndicatorUri(session, realm, resource);
+        if (targetClient == null) {
+            String errorMessage = "Invalid resource indicator: " + resource;
+            event.detail(Details.REASON, errorMessage);
+            event.error(Errors.INVALID_REQUEST);
+            throw new AuthorizationCheckException(Response.Status.BAD_REQUEST, OAuthErrorException.INVALID_TARGET, errorMessage);
+        }
+    }
+
     // https://tools.ietf.org/html/rfc7636#section-4
     private boolean isValidPkceCodeChallenge(String codeChallenge) {
         if (codeChallenge.length() < OIDCLoginProtocol.PKCE_CODE_CHALLENGE_MIN_LENGTH) {
