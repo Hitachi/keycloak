@@ -208,7 +208,7 @@ The `client-id-metadata-document` executor has the following system-wide setting
 
 To configure these settings, use the `--spi-client-policy-executor--client-id-metadata-document--<property>=<value>` command-line option when starting {project_name}. For example:
 
-```
+```bash
 bin/kc.[sh|bat] start --spi-client-policy-executor--client-id-metadata-document--min-cache-time=600 --spi-client-policy-executor--client-id-metadata-document--max-cache-time=86400 --spi-client-policy-executor--client-id-metadata-document--upper-limit-metadata-bytes=10000
 ```
 
