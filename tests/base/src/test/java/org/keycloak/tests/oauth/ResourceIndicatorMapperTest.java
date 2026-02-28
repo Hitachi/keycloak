@@ -226,8 +226,8 @@ public class ResourceIndicatorMapperTest {
 
     @Test
     public void testExecutorWithPermittedResources() throws Exception {
-        // Set up executor with permitted resources
-        List<String> permittedResources = List.of(RESOURCE_SERVER_URI, RESOURCE_SERVER_URI_2);
+        // Set up executor with permitted resources (only RESOURCE_SERVER_URI, not RESOURCE_SERVER_URI_2)
+        List<String> permittedResources = List.of(RESOURCE_SERVER_URI);
         String json = (new ClientPoliciesUtil.ClientProfilesBuilder()).addProfile(
                 (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "O Primeiro Perfil")
                         .addExecutor(SecureResourceIndicatorExecutorFactory.PROVIDER_ID, createResourceAudienceBindExecutorConfig(permittedResources))
@@ -252,9 +252,9 @@ public class ResourceIndicatorMapperTest {
                 .client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(RESOURCE_SERVER_URI).send();
         assertTokenValidResponse(tokenResponse, RESOURCE_SERVER_URI);
 
-        // resource specified in authorization request, but NOT in permitted resources
-        // -> error
-        assertLoginError(TEST_CLIENT, "https://different.resource.example.com/",
+        // resource specified in authorization request, registered as a client but NOT in permitted resources
+        // -> error from executor (not from checkResourceIndicator, since the client exists)
+        assertLoginError(TEST_CLIENT, RESOURCE_SERVER_URI_2,
                 OAuthErrorException.INVALID_REQUEST, ERR_NOT_PERMITTED_RESOURCE);
 
         // resource not specified in authorization request, but permitted resources are configured
