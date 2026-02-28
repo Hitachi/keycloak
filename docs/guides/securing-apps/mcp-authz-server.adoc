@@ -157,7 +157,7 @@ According to https://modelcontextprotocol.io/specification/2025-11-25/basic/auth
 
 {project_name} supports OAuth Client ID Metadata Document. To use Client ID Metadata Documents, you need to enable the feature and set up a client policy so that {project_name} processes the `client_id` parameter formatted as a URL and fetches the client metadata from that URL.
 
-NOTE: The OAuth Client ID Metadata Document feature is currently experimental. To enable it, start {project_name} with `--features=cimd`.
+WARNING: The OAuth Client ID Metadata Document support is an experimental feature in {project_name}. As such, it may introduce breaking changes in future versions of {project_name}. To enable it, start {project_name} with `--features=cimd`.
 
 ===== Setting up the ClientIdMetadataDocumentExecutor profile
 
