@@ -214,13 +214,15 @@ To configure these settings, use the `--spi-client-policy-executor--client-id-me
 bin/kc.[sh|bat] start --spi-client-policy-executor--client-id-metadata-document--min-cache-time=600 --spi-client-policy-executor--client-id-metadata-document--max-cache-time=86400 --spi-client-policy-executor--client-id-metadata-document--upper-limit-metadata-bytes=10000
 ```
 
-=== Visual Studio Code integration
+=== Visual Studio Code desktop integration
 
-https://code.visualstudio.com/[Microsoft Visual Studio Code] (VS Code) is an MCP client that supports OAuth Client ID Metadata Document. When VS Code connects to an MCP server that requires authorization, it sends an authorization request with a `client_id` parameter that is an `https` URL hosted on `vscode.dev` (e.g., `+https://vscode.dev/mcp-client+` or `+https://insiders.vscode.dev/mcp-client+`). {project_name} fetches the Client ID Metadata Document from this URL and uses the metadata to process the request.
+https://code.visualstudio.com/[Microsoft Visual Studio Code] (VS Code) desktop is an MCP client that supports OAuth Client ID Metadata Document. When VS Code desktop connects to an MCP server that requires authorization, it sends an authorization request with a `client_id` parameter that is an `https` URL hosted on `vscode.dev` (e.g., `+https://vscode.dev/mcp-client+` or `+https://insiders.vscode.dev/mcp-client+`). {project_name} fetches the Client ID Metadata Document from this URL and uses the metadata to process the request.
 
-To configure {project_name} for VS Code's MCP client, follow the steps below.
+VS Code desktop uses localhost callbacks for the OAuth redirect. It starts a local HTTP server and uses a redirect URI such as `+http://127.0.0.1:<port>/callback+`. Because the redirect URI is on `127.0.0.1` rather than on the `vscode.dev` domain, the *Restrict same domain* option in the client profile executor must be set to `OFF`.
 
-NOTE: VS Code is a public client that uses PKCE (Proof Key for Code Exchange) for OAuth. It does not use a client secret.
+To configure {project_name} for VS Code desktop's MCP client, follow the steps below.
+
+NOTE: VS Code desktop is a public client that uses PKCE (Proof Key for Code Exchange) for OAuth. It does not use a client secret.
 
 ==== Starting {project_name} with the CIMD feature
 
@@ -230,7 +232,7 @@ Start {project_name} with the `cimd` feature flag enabled:
 bin/kc.[sh|bat] start --features=cimd
 ```
 
-==== Setting up the client profile for VS Code
+==== Setting up the client profile for VS Code desktop
 
 . Navigate to *Realm Settings* -> *Client Policies* -> *Profiles* tab.
 . Click *Create client profile*.
@@ -240,12 +242,12 @@ bin/kc.[sh|bat] start --features=cimd
 +
 * *Allow http scheme*: `OFF`
 * *Trusted domains*: `(.*\.)?vscode\.dev` (this matches both `vscode.dev` and `insiders.vscode.dev`)
-* *Restrict same domain*: `OFF` (VS Code desktop uses `+http://127.0.0.1+` as a redirect URI, which is not on the same domain as `vscode.dev`)
-* *Only Allow Confidential Client*: `OFF` (VS Code is a public client)
+* *Restrict same domain*: `OFF` (VS Code desktop uses a localhost redirect URI such as `+http://127.0.0.1:<port>/callback+`, which is not on the same domain as `vscode.dev`)
+* *Only Allow Confidential Client*: `OFF` (VS Code desktop is a public client)
 +
 . Click *Save*.
 
-==== Setting up the client policy for VS Code
+==== Setting up the client policy for VS Code desktop
 
 . Navigate to *Realm Settings* -> *Client Policies* -> *Policies* tab.
 . Click *Create client policy*.
@@ -260,7 +262,7 @@ bin/kc.[sh|bat] start --features=cimd
 . Under *Associated client profiles*, add the `vscode-cimd-profile` profile created in the previous step.
 . Click *Save*.
 
-With this configuration, when VS Code sends an authorization request, {project_name} recognizes the `client_id` as a URL on `vscode.dev`, fetches the Client ID Metadata Document, and processes the request accordingly.
+With this configuration, when VS Code desktop sends an authorization request, {project_name} recognizes the `client_id` as a URL on `vscode.dev`, fetches the Client ID Metadata Document, and uses a localhost callback to complete the OAuth flow.
 
 
 </@tmpl.guide>
