@@ -241,7 +241,7 @@ bin/kc.[sh|bat] start --features=cimd
 . Configure the executor with the following options:
 +
 * *Allow http scheme*: `OFF`
-* *Trusted domains*: `vscode\.dev`
+* *Trusted domains*: `vscode.dev`
 * *Restrict same domain*: `OFF` (VS Code desktop uses a localhost redirect URI such as `+http://127.0.0.1:<port>/callback+`, which is not on the same domain as `vscode.dev`)
 * *Only Allow Confidential Client*: `OFF` (VS Code desktop is a public client)
 +
@@ -256,7 +256,7 @@ bin/kc.[sh|bat] start --features=cimd
 . Configure the condition with the following options:
 +
 * *URI scheme*: `https`
-* *Trusted domains*: `vscode\.dev`
+* *Trusted domains*: `vscode.dev`
 +
 . Click *Save*.
 . Under *Associated client profiles*, add the `vscode-cimd-profile` profile created in the previous step.
