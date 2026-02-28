@@ -1,6 +1,9 @@
 package org.keycloak.tests.oauth;
 
 import java.io.IOException;
+import java.util.List;
+
+import jakarta.ws.rs.BadRequestException;
 
 import org.keycloak.OAuthErrorException;
 import org.keycloak.common.Profile;
@@ -13,6 +16,11 @@ import org.keycloak.protocol.oidc.OIDCAdvancedConfigWrapper;
 import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.IDToken;
+import org.keycloak.representations.idm.ClientPoliciesRepresentation;
+import org.keycloak.representations.idm.ClientProfilesRepresentation;
+import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.clientpolicy.condition.AnyClientConditionFactory;
+import org.keycloak.services.clientpolicy.executor.SecureResourceIndicatorExecutorFactory;
 import org.keycloak.testframework.annotations.InjectRealm;
 import org.keycloak.testframework.annotations.KeycloakIntegrationTest;
 import org.keycloak.testframework.oauth.OAuthClient;
@@ -26,10 +34,12 @@ import org.keycloak.testframework.server.KeycloakServerConfig;
 import org.keycloak.testframework.server.KeycloakServerConfigBuilder;
 import org.keycloak.testframework.ui.annotations.InjectPage;
 import org.keycloak.testframework.ui.page.LogoutConfirmPage;
+import org.keycloak.testsuite.util.ClientPoliciesUtil;
 import org.keycloak.testsuite.util.oauth.AccessTokenResponse;
 import org.keycloak.testsuite.util.oauth.AuthorizationEndpointResponse;
 import org.keycloak.testsuite.util.oauth.IntrospectionResponse;
 import org.keycloak.testsuite.util.oauth.TokenRevocationResponse;
+import org.keycloak.util.JsonSerialization;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -37,6 +47,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+
+import static org.keycloak.services.clientpolicy.executor.SecureResourceIndicatorExecutor.ERR_DIFFERENT_RESOURCE;
+import static org.keycloak.services.clientpolicy.executor.SecureResourceIndicatorExecutor.ERR_NOT_PERMITTED_RESOURCE;
+import static org.keycloak.services.clientpolicy.executor.SecureResourceIndicatorExecutor.ERR_NO_RESOURCE_IN_TOKEN_REQUEST;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createAnyClientConditionConfig;
+import static org.keycloak.testsuite.util.ClientPoliciesUtil.createResourceAudienceBindExecutorConfig;
 
 
 @KeycloakIntegrationTest(config = ResourceIndicatorMapperTest.ResourceIndicatorMapperServerConfig.class)
@@ -65,6 +81,13 @@ public class ResourceIndicatorMapperTest {
     private static final String RESOURCE_SERVER_URI = "https://resource.example.com/v1";
     private static final String RESOURCE_SERVER_ROLE = "access";
 
+    private static final String RESOURCE_SERVER_CLIENT_2 = "MyResourceServer2";
+    private static final String RESOURCE_SERVER_URI_2 = "https://www.example.com/res";
+    private static final String RESOURCE_SERVER_ROLE_2 = "access";
+
+    private static final String POLICY_NAME = "MyPolicy";
+    private static final String PROFILE_NAME = "MyProfile";
+
     @BeforeEach
     public void setup() {
         runOnServer.run(session -> {
@@ -90,6 +113,28 @@ public class ResourceIndicatorMapperTest {
                 // Add the resource server's role to the test client's scope
                 ClientModel testClient = realm.getClientByClientId(TEST_CLIENT);
                 testClient.addScopeMapping(role);
+            }
+
+            // Set up second resource server client
+            ClientModel resourceServer2 = realm.getClientByClientId(RESOURCE_SERVER_CLIENT_2);
+            if (resourceServer2 == null) {
+                resourceServer2 = realm.addClient(RESOURCE_SERVER_CLIENT_2);
+                resourceServer2.setEnabled(true);
+                resourceServer2.setStandardFlowEnabled(false);
+                resourceServer2.setDirectAccessGrantsEnabled(false);
+                OIDCAdvancedConfigWrapper.fromClientModel(resourceServer2)
+                        .setResourceIndicatorUri(RESOURCE_SERVER_URI_2);
+
+                // Add a role to the second resource server
+                RoleModel role2 = resourceServer2.addRole(RESOURCE_SERVER_ROLE_2);
+
+                // Assign the role to the test user
+                UserModel user = session.users().getUserByUsername(realm, TEST_USER);
+                user.grantRole(role2);
+
+                // Add the second resource server's role to the test client's scope
+                ClientModel testClient = realm.getClientByClientId(TEST_CLIENT);
+                testClient.addScopeMapping(role2);
             }
 
             // disable verify profile required action
@@ -177,6 +222,96 @@ public class ResourceIndicatorMapperTest {
             UserModel user = session.users().getUserByUsername(realm, TEST_USER);
             user.grantRole(role);
         });
+    }
+
+    @Test
+    public void testExecutorWithPermittedResources() throws Exception {
+        // Set up executor with permitted resources
+        List<String> permittedResources = List.of(RESOURCE_SERVER_URI, RESOURCE_SERVER_URI_2);
+        String json = (new ClientPoliciesUtil.ClientProfilesBuilder()).addProfile(
+                (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "O Primeiro Perfil")
+                        .addExecutor(SecureResourceIndicatorExecutorFactory.PROVIDER_ID, createResourceAudienceBindExecutorConfig(permittedResources))
+                        .toRepresentation()
+        ).toString();
+        updateProfiles(json);
+
+        json = (new ClientPoliciesUtil.ClientPoliciesBuilder()).addPolicy(
+                (new ClientPoliciesUtil.ClientPolicyBuilder()).createPolicy(POLICY_NAME, "La Premiere Politique", Boolean.TRUE)
+                        .addCondition(AnyClientConditionFactory.PROVIDER_ID,
+                                createAnyClientConditionConfig())
+                        .addProfile(PROFILE_NAME)
+                        .toRepresentation()
+        ).toString();
+        updatePolicies(json);
+
+        // resource specified in an authorization request, included in permitted resources
+        // resource specified in a token request, same as the one in authorization request
+        // -> bind with resource
+        String code = loginUserAndGetCode(TEST_CLIENT, RESOURCE_SERVER_URI);
+        AccessTokenResponse tokenResponse = oAuthClient
+                .client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(RESOURCE_SERVER_URI).send();
+        assertTokenValidResponse(tokenResponse, RESOURCE_SERVER_URI);
+
+        // resource specified in authorization request, but NOT in permitted resources
+        // -> error
+        assertLoginError(TEST_CLIENT, "https://different.resource.example.com/",
+                OAuthErrorException.INVALID_REQUEST, ERR_NOT_PERMITTED_RESOURCE);
+
+        // resource not specified in authorization request, but permitted resources are configured
+        // -> error
+        assertLoginError(TEST_CLIENT, null,
+                OAuthErrorException.INVALID_REQUEST, ERR_NOT_PERMITTED_RESOURCE);
+    }
+
+    @Test
+    public void testExecutorConsistencyCheck() throws Exception {
+        // Set up executor without permitted resources (consistency check only)
+        String json = (new ClientPoliciesUtil.ClientProfilesBuilder()).addProfile(
+                (new ClientPoliciesUtil.ClientProfileBuilder()).createProfile(PROFILE_NAME, "O Primeiro Perfil")
+                        .addExecutor(SecureResourceIndicatorExecutorFactory.PROVIDER_ID, null)
+                        .toRepresentation()
+        ).toString();
+        updateProfiles(json);
+
+        json = (new ClientPoliciesUtil.ClientPoliciesBuilder()).addPolicy(
+                (new ClientPoliciesUtil.ClientPolicyBuilder()).createPolicy(POLICY_NAME, "La Premiere Politique", Boolean.TRUE)
+                        .addCondition(AnyClientConditionFactory.PROVIDER_ID,
+                                createAnyClientConditionConfig())
+                        .addProfile(PROFILE_NAME)
+                        .toRepresentation()
+        ).toString();
+        updatePolicies(json);
+
+        // resource specified in both authorization and token request (same value)
+        // -> success
+        String code = loginUserAndGetCode(TEST_CLIENT, RESOURCE_SERVER_URI);
+        AccessTokenResponse tokenResponse = oAuthClient
+                .client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(RESOURCE_SERVER_URI).send();
+        assertTokenValidResponse(tokenResponse, RESOURCE_SERVER_URI);
+
+        // resource specified in authorization request
+        // different resource specified in token request
+        // -> error
+        code = ssoLoginUserAndGetCode(TEST_CLIENT, RESOURCE_SERVER_URI);
+        tokenResponse = oAuthClient
+                .client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource("https://different.example.com/").send();
+        assertTokenInvalidResponse(tokenResponse, ERR_DIFFERENT_RESOURCE);
+
+        // resource specified in authorization request
+        // no resource in token request
+        // -> error
+        code = ssoLoginUserAndGetCode(TEST_CLIENT, RESOURCE_SERVER_URI);
+        tokenResponse = oAuthClient
+                .client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).resource(null).send();
+        assertTokenInvalidResponse(tokenResponse, ERR_NO_RESOURCE_IN_TOKEN_REQUEST);
+
+        // no resource in authorization request
+        // no resource in token request
+        // -> success, no bind
+        code = ssoLoginUserAndGetCode(TEST_CLIENT, null);
+        tokenResponse = oAuthClient
+                .client(TEST_CLIENT, TEST_CLIENT_SECRET).accessTokenRequest(code).send();
+        assertNotBindTokenValidResponse(tokenResponse);
     }
 
     public static class ResourceIndicatorMapperRealmConfig implements RealmConfig {
@@ -278,6 +413,12 @@ public class ResourceIndicatorMapperTest {
         }
     }
 
+    private void assertTokenInvalidResponse(AccessTokenResponse tokenResponse, String errorDescription) {
+        Assertions.assertEquals(400, tokenResponse.getStatusCode());
+        Assertions.assertEquals(OAuthErrorException.INVALID_GRANT, tokenResponse.getError());
+        Assertions.assertEquals(errorDescription, tokenResponse.getErrorDescription());
+    }
+
     private void assertLoginError(String clientId, String resource, String error, String errorDescription) {
         oAuthClient.client(clientId);
         oAuthClient.loginForm().resource(resource).open();
@@ -285,5 +426,29 @@ public class ResourceIndicatorMapperTest {
         AuthorizationEndpointResponse authorizationEndpointResponse = oAuthClient.parseLoginResponse();
         Assertions.assertEquals(error, authorizationEndpointResponse.getError());
         Assertions.assertEquals(errorDescription, authorizationEndpointResponse.getErrorDescription());
+    }
+
+    // Client Policies Operations
+
+    private void updateProfiles(String json) throws ClientPolicyException {
+        try {
+            ClientProfilesRepresentation clientProfiles = JsonSerialization.readValue(json, ClientProfilesRepresentation.class);
+            testRealm.admin().clientPoliciesProfilesResource().updateProfiles(clientProfiles);
+        } catch (BadRequestException e) {
+            throw new ClientPolicyException("update profiles failed", e.getResponse().getStatusInfo().toString());
+        } catch (Exception e) {
+            throw new ClientPolicyException("update profiles failed", e.getMessage());
+        }
+    }
+
+    private void updatePolicies(String json) throws ClientPolicyException {
+        try {
+            ClientPoliciesRepresentation clientPolicies = json==null ? null : JsonSerialization.readValue(json, ClientPoliciesRepresentation.class);
+            testRealm.admin().clientPoliciesPoliciesResource().updatePolicies(clientPolicies);
+        } catch (BadRequestException e) {
+            throw new ClientPolicyException("update policies failed", e.getResponse().getStatusInfo().toString());
+        } catch (IOException e) {
+            throw new ClientPolicyException("update policies failed", e.getMessage());
+        }
     }
 }
