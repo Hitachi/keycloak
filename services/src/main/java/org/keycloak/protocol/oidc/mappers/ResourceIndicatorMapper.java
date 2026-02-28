@@ -120,7 +120,7 @@ public class ResourceIndicatorMapper extends AbstractOIDCProtocolMapper implemen
     /**
      * Find a client by its resource indicator URI attribute.
      */
-    static ClientModel findClientByResourceIndicatorUri(KeycloakSession session, RealmModel realm, String resourceUri) {
+    public static ClientModel findClientByResourceIndicatorUri(KeycloakSession session, RealmModel realm, String resourceUri) {
         Map<String, String> attrs = Map.of(OIDCConfigAttributes.RESOURCE_INDICATOR_URI, resourceUri);
         return session.clients()
                 .searchClientsByAttributes(realm, attrs, null, null)
