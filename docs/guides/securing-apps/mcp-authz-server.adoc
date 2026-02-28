@@ -61,7 +61,7 @@ According to the https://modelcontextprotocol.io/specification/draft/basic/autho
 | SHOULD
 | -
 | -
-| Not supported
+| Supported
 
 |======
 
@@ -84,7 +84,7 @@ According to these criteria, the following table shows which MCP version {projec
 | Partially Supported without Resource Indicators for OAuth 2.0
 
 | https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization[2025-11-25]
-| Partially Supported without Resource Indicators for OAuth 2.0 and OAuth Client ID Metadata Document
+| Partially Supported without Resource Indicators for OAuth 2.0
 
 |===
 
@@ -155,7 +155,50 @@ According to https://modelcontextprotocol.io/specification/2025-11-25/basic/auth
 * Pre-registration: When client and server have an existing relationship
 * Dynamic Client Registration: For backwards compatibility or specific requirements
 
-The Keycloak community is planning to support OAuth Client ID Metadata Document in the future. Until the support is completed, {project_name} can still accommodate an MCP client by pre-registration or Dynamic Client Registration.
+{project_name} supports OAuth Client ID Metadata Document. To use Client ID Metadata Documents, you need to enable the feature and set up a client policy so that {project_name} processes the `client_id` parameter formatted as a URL and fetches the client metadata from that URL.
+
+NOTE: The OAuth Client ID Metadata Document feature is currently experimental. To enable it, start {project_name} with `--features=cimd`.
+
+===== Setting up the ClientIdMetadataDocumentExecutor profile
+
+The `ClientIdMetadataDocumentExecutor` is a client policy executor that processes an authorization request whose `client_id` parameter is a URL pointing to a Client ID Metadata Document.
+
+To configure the executor, create a client policy profile in the {project_name} Admin Console:
+
+. Navigate to *Realm Settings* -> *Client Policies* -> *Profiles* tab.
+. Click *Create client profile*.
+. Give the profile a name such as `cimd-profile` and click *Save*.
+. Click *Add executor* and select `client-id-metadata-document` from the list.
+. Configure the executor with the following options:
++
+* *Allow http scheme*: If `ON`, allows `http` scheme for the Client ID URL and Client Metadata URLs (e.g., `client_uri`, `logo_uri`, `tos_uri`, `policy_uri`, `jwks_uri`). This should only be `ON` in a development environment and must be `OFF` in a production environment.
+* *Trusted domains*: A list of domain patterns (regex) that the executor accepts for the Client ID URL and Client Metadata URL properties. For example, use `(.*)\\.example\\.org` to accept any subdomain of `example.org`. If empty, all domains are denied.
+* *Restrict same domain*: If `ON`, the executor verifies that the Client ID URL and Redirect URI in an authorization request, as well as URL-valued properties of the client metadata, are all under the same trusted domain.
+* *Required properties*: A list of client metadata properties that must be present in the Client ID Metadata Document. If the fetched document does not include all the listed properties, the request is rejected.
+* *Only Allow Confidential Client*: If `ON`, the executor only accepts a Client Metadata Document representing a confidential client. In this case, the client metadata must include either a `jwks` or `jwks_uri` property and must use `private_key_jwt` or `tls_client_auth` as the token endpoint authentication method.
++
+. Click *Save*.
+
+===== Setting up the ClientIdUriSchemeCondition policy
+
+The `ClientIdUriSchemeCondition` is a client policy condition that triggers when the `client_id` parameter in an authorization request is a URI matching a specified scheme (e.g., `https`). When this condition is met, the associated profiles (such as the `cimd-profile` configured above) are executed.
+
+To configure the condition, create a client policy in the {project_name} Admin Console:
+
+. Navigate to *Realm Settings* -> *Client Policies* -> *Policies* tab.
+. Click *Create client policy*.
+. Give the policy a name such as `cimd-policy` and click *Save*.
+. Under *Conditions*, click *Add condition* and select `client-id-uri` from the list.
+. Configure the condition with the following options:
++
+* *URI scheme*: A list of URI schemes to match against the `client_id` parameter (e.g., `https`). In a production environment, only `https` should be used.
+* *Trusted domains*: A list of domain patterns (regex) that the condition accepts for the host part of the `client_id` URI. If domains are filled, the condition evaluates to true only when the host part of the `client_id` matches one of the domains. If not filled, the condition evaluates to false regardless. For example, use `(.*)\\.example\\.org` to accept any subdomain of `example.org`.
++
+. Click *Save*.
+. Under *Associated client profiles*, add the `cimd-profile` profile created in the previous step.
+. Click *Save*.
+
+With this configuration, when an MCP client sends an authorization request with a `client_id` value that is an `https` URL matching a trusted domain, {project_name} fetches the Client ID Metadata Document from that URL and uses the metadata to process the request.
 
 
 </@tmpl.guide>
