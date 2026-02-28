@@ -159,7 +159,7 @@ According to https://modelcontextprotocol.io/specification/2025-11-25/basic/auth
 
 WARNING: The OAuth Client ID Metadata Document support is an experimental feature in {project_name}. As such, it may introduce breaking changes in future versions of {project_name}. To enable it, start {project_name} with `--features=cimd`.
 
-===== Setting up the ClientIdMetadataDocumentExecutor profile
+===== Setting up the client profile for OAuth Client ID Metadata Document
 
 The `ClientIdMetadataDocumentExecutor` is a client policy executor that processes an authorization request whose `client_id` parameter is a URL pointing to a Client ID Metadata Document.
 
@@ -179,7 +179,7 @@ To configure the executor, create a client policy profile in the {project_name} 
 +
 . Click *Save*.
 
-===== Setting up the ClientIdUriSchemeCondition policy
+===== Setting up the client policy for OAuth Client ID Metadata Document
 
 The `ClientIdUriSchemeCondition` is a client policy condition that triggers when the `client_id` parameter in an authorization request is a URI matching a specified scheme (e.g., `https`). When this condition is met, the associated profiles (such as the `cimd-profile` configured above) are executed.
 
