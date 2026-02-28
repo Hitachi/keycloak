@@ -72,42 +72,32 @@ public class ClientIdUriSchemeCondition extends AbstractClientPolicyConditionPro
         switch (context.getEvent()) {
             case PRE_AUTHORIZATION_REQUEST:
                 PreAuthorizationRequestContext paContext = (PreAuthorizationRequestContext) context;
-                String clientId = ((PreAuthorizationRequestContext) context).getRequestParameters().getFirst(OAuth2Constants.CLIENT_ID);
-                if (isUriSchemeMatched(clientId) && isTrustedDomainMatched(clientId)) return ClientPolicyVote.YES;
+                String clientId = paContext.getRequestParameters().getFirst(OAuth2Constants.CLIENT_ID);
+                if (clientId == null || configuration.getClientIdUriSchemes() == null || configuration.getClientIdUriSchemes().isEmpty()) {
+                    return ClientPolicyVote.NO;
+                }
+                final URI uri;
+                try {
+                    uri = new URI(clientId);
+                } catch (URISyntaxException e) {
+                    logger.debugv("not URL: clientId = {0}", clientId);
+                    return ClientPolicyVote.NO;
+                }
+                if (isUriSchemeMatched(uri) && isTrustedDomainMatched(uri)) return ClientPolicyVote.YES;
                 return ClientPolicyVote.NO;
             default:
                 return ClientPolicyVote.ABSTAIN;
         }
     }
 
-    private boolean isUriSchemeMatched(String clientId) {
-        if (clientId == null || configuration.getClientIdUriSchemes() == null || configuration.getClientIdUriSchemes().isEmpty()) {
-            return false;
-        }
-
-        final URI uri;
-        try {
-            uri = new URI(clientId);
-        } catch (URISyntaxException e) {
-            logger.debugv("not URL: clientId = {0}", clientId);
-            return false;
-        }
-
+    private boolean isUriSchemeMatched(URI uri) {
         return configuration.getClientIdUriSchemes().stream().anyMatch(i->i.equals(uri.getScheme()));
     }
 
-    private boolean isTrustedDomainMatched(String clientId) {
+    private boolean isTrustedDomainMatched(URI uri) {
         List<String> trustedDomains = convertContentFilledList(configuration.getTrustedDomains());
-        if (trustedDomains == null || trustedDomains.isEmpty()) {
+        if (trustedDomains.isEmpty()) {
             logger.debug("trusted domain list is vacant.");
-            return false;
-        }
-
-        final URI uri;
-        try {
-            uri = new URI(clientId);
-        } catch (URISyntaxException e) {
-            logger.warnv("Malformed URL: {0}", clientId);
             return false;
         }
 
