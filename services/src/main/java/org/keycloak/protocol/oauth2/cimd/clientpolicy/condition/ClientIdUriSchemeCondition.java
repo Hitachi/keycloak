@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import org.keycloak.OAuth2Constants;
@@ -133,10 +134,15 @@ public class ClientIdUriSchemeCondition extends AbstractClientPolicyConditionPro
 
     // apply the same logic in TrustedHostClientRegistrationPolicy.
     private boolean checkTrustedDomain(String hostname, String trustedDomain) {
-        if (trustedDomain.startsWith("*.")) {
-            String domain = trustedDomain.substring(2);
-            return hostname.equals(domain) || hostname.endsWith("." + domain);
+        if (hostname == null || trustedDomain == null) {
+            return false;
         }
-        return hostname.equals(trustedDomain);
+        String normalizedHostname = hostname.toLowerCase(Locale.ROOT);
+        String normalizedTrustedDomain = trustedDomain.toLowerCase(Locale.ROOT);
+        if (normalizedTrustedDomain.startsWith("*.")) {
+            String domain = normalizedTrustedDomain.substring(2);
+            return normalizedHostname.equals(domain) || normalizedHostname.endsWith("." + domain);
+        }
+        return normalizedHostname.equals(normalizedTrustedDomain);
     }
 }

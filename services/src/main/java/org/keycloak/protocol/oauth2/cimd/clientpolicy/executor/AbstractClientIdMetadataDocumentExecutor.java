@@ -1,12 +1,15 @@
 package org.keycloak.protocol.oauth2.cimd.clientpolicy.executor;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -533,11 +536,16 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
 
     // apply the same logic in TrustedHostClientRegistrationPolicy.
     protected boolean checkTrustedDomain(String hostname, String trustedDomain) {
-        if (trustedDomain.startsWith("*.")) {
-            String domain = trustedDomain.substring(2);
-            return hostname.equals(domain) || hostname.endsWith("." + domain);
+        if (hostname == null || trustedDomain == null) {
+            return false;
         }
-        return hostname.equals(trustedDomain);
+        String normalizedHostname = hostname.toLowerCase(Locale.ROOT);
+        String normalizedTrustedDomain = trustedDomain.toLowerCase(Locale.ROOT);
+        if (normalizedTrustedDomain.startsWith("*.")) {
+            String domain = normalizedTrustedDomain.substring(2);
+            return normalizedHostname.equals(domain) || normalizedHostname.endsWith("." + domain);
+        }
+        return normalizedHostname.equals(normalizedTrustedDomain);
     }
 
     /**
@@ -723,6 +731,10 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
             getLogger().debug("trusted domain list is vacant.");
             throw invalidClientIdMetadata(ERR_NOTALLOWED_DOMAIN);
         }
+        if (uriString == null) {
+            errorHandler.onError(ERR_METADATA_MALFORMED_URL, "Malformed URL: {0} property in metadata = {1}");
+            return;
+        }
 
         final URI uri;
         try {
@@ -740,6 +752,23 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         if (trustedDomains.stream().noneMatch(i->checkTrustedDomain(uri.getHost(), i))) {
             getLogger().warnv("not trusted domain: host = {0}", uri.getHost());
             throw invalidClientIdMetadata(ERR_NOTALLOWED_DOMAIN);
+        }
+
+        if (!getConfiguration().isAllowHttpScheme()) {
+            verifyNotInternalAddress(uri.getHost(), errorHandler);
+        }
+    }
+
+    private void verifyNotInternalAddress(String host, ErrorHandler errorHandler) throws ClientPolicyException {
+        try {
+            for (InetAddress resolvedAddress : InetAddress.getAllByName(host)) {
+                if (resolvedAddress.isAnyLocalAddress() || resolvedAddress.isLoopbackAddress() || resolvedAddress.isSiteLocalAddress() || resolvedAddress.isLinkLocalAddress()) {
+                    errorHandler.onError(ERR_NOTALLOWED_DOMAIN, "not allowed private/loopback address: {0} property in metadata = {1}");
+                    return;
+                }
+            }
+        } catch (UnknownHostException e) {
+            errorHandler.onError(ERR_HOST_UNRESOLVED, "host part unresolved: {0} property in metadata = {1}");
         }
     }
 
