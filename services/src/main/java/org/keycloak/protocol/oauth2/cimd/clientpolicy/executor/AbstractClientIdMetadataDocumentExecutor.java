@@ -223,17 +223,30 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
             } else {
                 normalizedCacheControlHeaderValue = rawCacheControlHeaderValue.toLowerCase().replaceAll("\\s", "");
                 List<String> sList  = Arrays.asList(normalizedCacheControlHeaderValue.split(",", 0));
-                if (sList.contains("no-cache")) {
-                    noCache = true;
+                int maxAgeCount = 0;
+                int sMaxAgeCount = 0;
+                for (String directive : sList) {
+                    if ("no-cache".equals(directive)) {
+                        noCache = true;
+                    } else if ("no-store".equals(directive)) {
+                        noStore = true;
+                    } else if (directive.startsWith("max-age=")) {
+                        maxAgeCount++;
+                        if (maxAgeCount == 1) {
+                            maxAgeValue = deriveExpiryValue(directive);
+                        }
+                    } else if (directive.startsWith("s-maxage=")) {
+                        sMaxAgeCount++;
+                        if (sMaxAgeCount == 1) {
+                            sMaxAgeValue = deriveExpiryValue(directive);
+                        }
+                    }
                 }
-                if (sList.contains("no-store")) {
-                    noStore = true;
+                if (maxAgeCount != 1) {
+                    maxAgeValue = -1;
                 }
-                if (sList.stream().filter(i->i.startsWith("max-age=")).count() == 1) {
-                    maxAgeValue = deriveExpiryValue("max-age", sList);
-                }
-                if (sList.stream().filter(i->i.startsWith("s-maxage=")).count() == 1) {
-                    sMaxAgeValue = deriveExpiryValue("s-maxage", sList);
+                if (sMaxAgeCount != 1) {
+                    sMaxAgeValue = -1;
                 }
             }
         }
@@ -279,8 +292,8 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
             return minCacheTime > 0 ? Time.currentTime() + minCacheTime : Time.currentTime();
         }
 
-        private int deriveExpiryValue(final String key, List<String> sList) {
-            String[] sAry = sList.stream().filter(i->i.startsWith(key + "=")).findFirst().get().split("=");
+        private int deriveExpiryValue(String directive) {
+            String[] sAry = directive.split("=");
             try {
                 if (sAry.length == 2) {
                     int returnValue = Integer.parseInt(sAry[1]);
@@ -655,46 +668,15 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         // CIMD (mandatory): client_id
         // RFC 7591 (mandagory): redirect_uris
         // RFC 7591 (optional): logo_uri, client_uri, tos_uri, policy_uri, jwks_uri
-        verifyUri(clientOIDC.getClientId(), (error, logMessageTemplate) -> {
-            getLogger().warnv(logMessageTemplate, "client_id", clientOIDC.getClientId());
-            throw invalidClientIdMetadata(error);
-        });
+        verifyClientMetadataUri("client_id", clientOIDC.getClientId());
         for (String redirect_uri : clientOIDC.getRedirectUris()) {
-            verifyUri(redirect_uri, (error, logMessageTemplate) -> {
-                getLogger().warnv(logMessageTemplate, "redirect_uris", redirect_uri);
-                throw invalidClientIdMetadata(error);
-            });
+            verifyClientMetadataUri("redirect_uris", redirect_uri);
         }
-        if (clientOIDC.getLogoUri() != null) {
-            verifyUri(clientOIDC.getLogoUri(), (error, logMessageTemplate) -> {
-                getLogger().warnv(logMessageTemplate, "logo_uri", clientOIDC.getLogoUri());
-                throw invalidClientIdMetadata(error);
-            });
-        }
-        if (clientOIDC.getClientUri() != null) {
-            verifyUri(clientOIDC.getClientUri(), (error, logMessageTemplate) -> {
-                getLogger().warnv(logMessageTemplate, "client_uri", clientOIDC.getClientUri());
-                throw invalidClientIdMetadata(error);
-            });
-        }
-        if (clientOIDC.getTosUri() != null) {
-            verifyUri(clientOIDC.getTosUri(), (error, logMessageTemplate) -> {
-                getLogger().warnv(logMessageTemplate, "tos_uri", clientOIDC.getTosUri());
-                throw invalidClientIdMetadata(error);
-            });
-        }
-        if (clientOIDC.getPolicyUri() != null) {
-            verifyUri(clientOIDC.getPolicyUri(), (error, logMessageTemplate) -> {
-                getLogger().warnv(logMessageTemplate, "policy_uri", clientOIDC.getPolicyUri());
-                throw invalidClientIdMetadata(error);
-            });
-        }
-        if (clientOIDC.getJwksUri() != null) {
-            verifyUri(clientOIDC.getJwksUri(), (error, logMessageTemplate) -> {
-                getLogger().warnv(logMessageTemplate, "jwks_uri", clientOIDC.getJwksUri());
-                throw invalidClientIdMetadata(error);
-            });
-        }
+        verifyClientMetadataUri("logo_uri", clientOIDC.getLogoUri());
+        verifyClientMetadataUri("client_uri", clientOIDC.getClientUri());
+        verifyClientMetadataUri("tos_uri", clientOIDC.getTosUri());
+        verifyClientMetadataUri("policy_uri", clientOIDC.getPolicyUri());
+        verifyClientMetadataUri("jwks_uri", clientOIDC.getJwksUri());
 
         URI clientIdURIfromMetadata;
         try {
@@ -706,6 +688,16 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         }
 
         return clientIdURIfromMetadata;
+    }
+
+    private void verifyClientMetadataUri(String fieldName, String uriValue) throws ClientPolicyException {
+        if (uriValue == null) {
+            return;
+        }
+        verifyUri(uriValue, (error, logMessageTemplate) -> {
+            getLogger().warnv(logMessageTemplate, fieldName, uriValue);
+            throw invalidClientIdMetadata(error);
+        });
     }
 
     // any access to parent folder /../ or current /./ is unsafe with or without encoding
