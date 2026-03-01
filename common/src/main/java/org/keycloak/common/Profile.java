@@ -164,6 +164,8 @@ public class Profile {
 
         RESOURCE_INDICATOR("Resource Indicators for OAuth 2.0", Type.EXPERIMENTAL),
 
+        IDENTITY_ASSERTION_JWT_VALIDATOR("Identity Assertion JWT validator", Type.EXPERIMENTAL),
+        
         /**
          * @see <a href="https://github.com/keycloak/keycloak/issues/37967">Deprecate for removal the Instagram social broker</a>.
          */
