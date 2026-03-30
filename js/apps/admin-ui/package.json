@@ -86,7 +86,7 @@
     }
   },
   "dependencies": {
-    "@dagrejs/dagre": "^1.1.8",
+    "@dagrejs/dagre": "^2.0.4",
     "@keycloak/keycloak-admin-client": "workspace:*",
     "@keycloak/keycloak-ui-shared": "workspace:*",
     "@patternfly/patternfly": "^5.4.2",
