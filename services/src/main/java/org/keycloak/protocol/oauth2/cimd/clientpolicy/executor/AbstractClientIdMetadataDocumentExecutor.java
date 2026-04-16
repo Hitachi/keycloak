@@ -133,6 +133,10 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         @JsonProperty(AbstractClientIdMetadataDocumentExecutorFactory.REQUIRED_PROPERTIES)
         protected List<String> requiredProperties = null;
 
+        // Realm-level cap on CIMD-persisted clients (0 means unlimited)
+        @JsonProperty(AbstractClientIdMetadataDocumentExecutorFactory.MAX_CIMD_CLIENTS)
+        protected int maxCimdClients = 0;
+
         public Configuration() {
         }
 
@@ -166,6 +170,14 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
 
         public void setRequiredProperties(List<String> requiredProperties) {
             this.requiredProperties = requiredProperties;
+        }
+
+        public int getMaxCimdClients() {
+            return maxCimdClients;
+        }
+
+        public void setMaxCimdClients(int maxCimdClients) {
+            this.maxCimdClients = maxCimdClients;
         }
     }
 

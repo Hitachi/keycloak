@@ -45,6 +45,9 @@ public abstract class AbstractClientIdMetadataDocumentExecutorFactory
     public static final String REQUIRED_PROPERTIES = "cimd-required-properties";
     public static final String RESTRICT_SAME_DOMAIN = "cimd-restrict-same-domain";
 
+    // Realm-level cap on CIMD-persisted clients
+    public static final String MAX_CIMD_CLIENTS = "cimd-max-clients";
+
     // Factory Global Settings
     public static final String CONFIG_CIMD_PROVIDER_NAME = "cimd-provider-name";
     public static final String CONFIG_MIN_CACHE_TIME = "min-cache-time";
@@ -112,6 +115,17 @@ public abstract class AbstractClientIdMetadataDocumentExecutorFactory
                 "If client metadata does not include all the properties, the executor does not accept the client metadata.",
                 ProviderConfigProperty.MULTIVALUED_STRING_TYPE,
                 null);
+        configProperties.add(property);
+
+        // Realm-level cap on CIMD-persisted clients
+        property = new ProviderConfigProperty(
+                MAX_CIMD_CLIENTS,
+                "Max CIMD-persisted clients",
+                "The maximum number of CIMD-persisted clients allowed per realm. " +
+                "If the number of CIMD-persisted clients reaches this limit, new CIMD client registration is rejected. " +
+                "Set to 0 (default) for unlimited.",
+                ProviderConfigProperty.STRING_TYPE,
+                "0");
         configProperties.add(property);
     }
 

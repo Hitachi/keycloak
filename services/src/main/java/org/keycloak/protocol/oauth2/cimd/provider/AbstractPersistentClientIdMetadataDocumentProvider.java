@@ -3,6 +3,7 @@ package org.keycloak.protocol.oauth2.cimd.provider;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -82,6 +83,17 @@ public abstract class AbstractPersistentClientIdMetadataDocumentProvider<CONFIG 
 
     public static final String CIMD_CACHE_EXPIRY_TIME_IN_SEC = "cimd.cache.expiry.time.in.sec";
 
+    /**
+     * Marker attribute for CIMD-persisted clients.
+     * Used to efficiently count CIMD-persisted clients in a realm for enforcing the realm-level cap.
+     */
+    public static final String CIMD_PERSISTED_CLIENT = "cimd.persisted";
+
+    /**
+     * Error message when the CIMD-persisted clients limit is reached.
+     */
+    public static final String ERR_CIMD_CLIENTS_LIMIT_REACHED = "CIMD-persisted clients limit reached";
+
     protected abstract Logger getLogger();
 
     protected AbstractPersistentClientIdMetadataDocumentProvider(KeycloakSession session) {
@@ -135,12 +147,19 @@ public abstract class AbstractPersistentClientIdMetadataDocumentProvider<CONFIG 
         // do the same thing as in dynamic client registration except for:
         //   - not set client registration token
         RealmModel realm = session.getContext().getRealm();
+
+        // Check realm-level cap on CIMD-persisted clients
+        checkCimdClientsLimit(realm);
+
         try {
             OIDCClientRepresentation clientOIDC = clientOIDCWithCacheControl.getOidcClientRepresentation();
             ClientRepresentation clientRep = DescriptionConverter.toInternal(session, clientOIDC);
 
             // set cache expiry time
             setCacheExpiryTimeToClientMetadata(clientRep, clientOIDCWithCacheControl.getClientMetadataCacheControl().getCacheExpiryTimeInSec());
+
+            // set CIMD-persisted client marker
+            clientRep.getAttributes().put(CIMD_PERSISTED_CLIENT, "true");
 
             // augment client depending on the configuration of the CIMD executor
             augmentClientMetadata(clientRep);
@@ -264,6 +283,29 @@ public abstract class AbstractPersistentClientIdMetadataDocumentProvider<CONFIG 
 
     private static ClientPolicyException invalidClientMetadata(String errorDetail) {
         return new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, errorDetail);
+    }
+
+    /**
+     * Checks if the realm-level cap on CIMD-persisted clients has been reached.
+     * If the configured max is greater than 0 and the current count of CIMD-persisted clients
+     * in the realm has reached or exceeded that max, a {@link ClientPolicyException} is thrown
+     * to reject the authorization request.
+     *
+     * @param realm the realm to check
+     * @throws ClientPolicyException if the CIMD-persisted clients limit has been reached
+     */
+    private void checkCimdClientsLimit(RealmModel realm) throws ClientPolicyException {
+        int maxCimdClients = configuration.getMaxCimdClients();
+        if (maxCimdClients <= 0) {
+            // 0 or negative means unlimited
+            return;
+        }
+        long cimdClientCount = realm.searchClientByAttributes(
+                Map.of(CIMD_PERSISTED_CLIENT, "true"), null, null).count();
+        if (cimdClientCount >= maxCimdClients) {
+            getLogger().warnv("CIMD-persisted clients limit reached: max={0}, current={1}", maxCimdClients, cimdClientCount);
+            throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, ERR_CIMD_CLIENTS_LIMIT_REACHED);
+        }
     }
 
     // the same as AbstractClientRegistrationProvider.addDefaultRole
