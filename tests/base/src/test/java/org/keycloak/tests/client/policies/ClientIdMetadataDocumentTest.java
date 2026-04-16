@@ -819,36 +819,33 @@ public class ClientIdMetadataDocumentTest {
         executorConfig.setMaxCimdClients(1);
         updatePolicy(conditionConfig, executorConfig);
 
-        // first CIMD client: should succeed
+        // Pre-occupy the CIMD client slot by creating a dummy client with the marker attribute via admin API.
+        // This simulates a realm that already has the maximum number of CIMD-persisted clients.
+        ClientRepresentation dummyCimdClient = new ClientRepresentation();
+        dummyCimdClient.setClientId("dummy-cimd-client");
+        dummyCimdClient.setAttributes(Map.of(
+                AbstractPersistentClientIdMetadataDocumentProvider.CIMD_PERSISTED_CLIENT, "true"));
+        realm.admin().clients().create(dummyCimdClient);
+
+        // attempt to create a CIMD client via authorization request: should fail because limit is 1
+        assertLoginAndError(AbstractPersistentClientIdMetadataDocumentProvider.ERR_CIMD_CLIENTS_LIMIT_REACHED);
+
+        // remove the dummy CIMD client to free a slot
+        List<ClientRepresentation> dummyClients = realm.admin().clients().findByClientId("dummy-cimd-client");
+        Assertions.assertEquals(1, dummyClients.size());
+        realm.admin().clients().get(dummyClients.get(0).getId()).remove();
+
+        // now CIMD client creation should succeed
         String code = loginUserAndGetCode(true);
         String signedJwt = createSignedRequestToken();
         AccessTokenResponse tokenResponse = oauth.client(CLIENT_ID).accessTokenRequest(code).signedJwt(signedJwt).send();
         oauth.verifyToken(tokenResponse.getAccessToken());
 
-        // check that the CIMD client was persisted
+        // check that the CIMD client was persisted with the marker attribute
         ClientRepresentation clientRepresentation = findByClientIdByAdmin();
         Assertions.assertNotNull(clientRepresentation);
         Assertions.assertEquals("true", clientRepresentation.getAttributes().get(
                 AbstractPersistentClientIdMetadataDocumentProvider.CIMD_PERSISTED_CLIENT));
-
-        // logout
-        logout(tokenResponse.getIdToken());
-
-        // second CIMD client (different client_id): should fail because limit is 1
-        String secondClientId = "http://localhost:8500/cimd/metadata2";
-        assertLoginAndError(secondClientId, AbstractPersistentClientIdMetadataDocumentProvider.ERR_CIMD_CLIENTS_LIMIT_REACHED);
-
-        // delete the persisted client
-        deleteClientByAdmin(clientRepresentation.getId());
-
-        // after deletion, a new CIMD client should succeed again
-        code = loginUserAndGetCode(true);
-        signedJwt = createSignedRequestToken();
-        tokenResponse = oauth.client(CLIENT_ID).accessTokenRequest(code).signedJwt(signedJwt).send();
-        oauth.verifyToken(tokenResponse.getAccessToken());
-
-        clientRepresentation = findByClientIdByAdmin();
-        Assertions.assertNotNull(clientRepresentation);
 
         // delete the persisted client
         logoutAndDelete(clientRepresentation.getId(), tokenResponse.getIdToken());
@@ -872,9 +869,11 @@ public class ClientIdMetadataDocumentTest {
         AccessTokenResponse tokenResponse = oauth.client(CLIENT_ID).accessTokenRequest(code).signedJwt(signedJwt).send();
         oauth.verifyToken(tokenResponse.getAccessToken());
 
-        // check that the CIMD client was persisted
+        // check that the CIMD client was persisted with the marker attribute
         ClientRepresentation clientRepresentation = findByClientIdByAdmin();
         Assertions.assertNotNull(clientRepresentation);
+        Assertions.assertEquals("true", clientRepresentation.getAttributes().get(
+                AbstractPersistentClientIdMetadataDocumentProvider.CIMD_PERSISTED_CLIENT));
 
         // delete the persisted client
         logoutAndDelete(clientRepresentation.getId(), tokenResponse.getIdToken());
