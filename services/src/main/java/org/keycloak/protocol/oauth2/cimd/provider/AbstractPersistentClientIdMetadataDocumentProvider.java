@@ -301,7 +301,7 @@ public abstract class AbstractPersistentClientIdMetadataDocumentProvider<CONFIG 
             return;
         }
         long cimdClientCount = realm.searchClientByAttributes(
-                Map.of(CIMD_PERSISTED_CLIENT, "true"), null, null).count();
+                Map.of(CIMD_PERSISTED_CLIENT, "true"), null, null).limit(maxCimdClients).count();
         if (cimdClientCount >= maxCimdClients) {
             getLogger().warnv("CIMD-persisted clients limit reached: max={0}, current={1}", maxCimdClients, cimdClientCount);
             throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, ERR_CIMD_CLIENTS_LIMIT_REACHED);
