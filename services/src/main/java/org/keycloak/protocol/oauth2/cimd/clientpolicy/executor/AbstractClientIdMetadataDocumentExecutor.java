@@ -423,7 +423,7 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
 
     /**
      * Checks if the realm-level cap on total clients has been reached.
-     * This prevents unlimited CIMD-persisted client registration
+     * This prevents unlimited client registration in realms using CIMD
      * (CWE-400: Uncontrolled Resource Consumption / CWE-770: Allocation of Resources Without Limits or Throttling).
      *
      * <p>The max-clients limit is a factory global setting that applies to every realm and counts all clients,
