@@ -133,10 +133,6 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         @JsonProperty(AbstractClientIdMetadataDocumentExecutorFactory.REQUIRED_PROPERTIES)
         protected List<String> requiredProperties = null;
 
-        // Realm-level cap on CIMD-persisted clients (0 means unlimited)
-        @JsonProperty(AbstractClientIdMetadataDocumentExecutorFactory.MAX_CIMD_CLIENTS)
-        protected int maxCimdClients = 0;
-
         public Configuration() {
         }
 
@@ -170,14 +166,6 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
 
         public void setRequiredProperties(List<String> requiredProperties) {
             this.requiredProperties = requiredProperties;
-        }
-
-        public int getMaxCimdClients() {
-            return maxCimdClients;
-        }
-
-        public void setMaxCimdClients(int maxCimdClients) {
-            this.maxCimdClients = maxCimdClients;
         }
     }
 
@@ -383,6 +371,8 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
         validateClientMetadata(clientIdURI, redirectUriURI, clientOIDCWithCacheControl.getOidcClientRepresentation());
 
         if (fetchOp == FetchOperation.CREATE) {
+            // Check max clients per realm before creating a new client
+            checkClientsLimit();
             // Create Client Metadata
             provider.createClientMetadata(clientOIDCWithCacheControl);
         } else if (fetchOp == FetchOperation.UPDATE) {
@@ -427,6 +417,32 @@ public abstract class AbstractClientIdMetadataDocumentExecutor<CONFIG extends Ab
     // Implementation
     // Fetch Client Metadata
     public static final String ERR_METADATA_FETCH_FAILED = "Client Metadata fetch failed";
+
+    // Max Clients per realm
+    public static final String ERR_CLIENTS_LIMIT_REACHED = "Max clients per realm reached";
+
+    /**
+     * Checks if the realm-level cap on total clients has been reached.
+     * This prevents unlimited CIMD-persisted client registration
+     * (CWE-400: Uncontrolled Resource Consumption / CWE-770: Allocation of Resources Without Limits or Throttling).
+     *
+     * <p>The max-clients limit is a factory global setting that applies to every realm and counts all clients,
+     * not just those created via CIMD, following the same approach as {@code MaxClientsClientRegistrationPolicy} in DCR.
+     *
+     * @throws ClientPolicyException when the realm has reached or exceeded the maximum number of clients
+     */
+    private void checkClientsLimit() throws ClientPolicyException {
+        int maxClients = providerConfig.getMaxClients();
+        if (maxClients <= 0) {
+            // 0 or negative means unlimited
+            return;
+        }
+        long currentCount = session.getContext().getRealm().getClientsCount();
+        if (currentCount >= maxClients) {
+            getLogger().warnv("Max clients per realm reached: max={0}, current={1}", maxClients, currentCount);
+            throw new ClientPolicyException(OAuthErrorException.INVALID_REQUEST, ERR_CLIENTS_LIMIT_REACHED);
+        }
+    }
 
     /**
      * Verifies an authorization request to check if the request includes required parameters and follows the expected format.

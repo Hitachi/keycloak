@@ -15,7 +15,6 @@ import org.keycloak.protocol.oauth2.cimd.clientpolicy.executor.AbstractClientIdM
 import org.keycloak.protocol.oauth2.cimd.clientpolicy.executor.ClientIdMetadataDocumentExecutor;
 import org.keycloak.protocol.oauth2.cimd.clientpolicy.executor.ClientIdMetadataDocumentExecutorFactory;
 import org.keycloak.protocol.oauth2.cimd.clientpolicy.executor.ClientIdMetadataDocumentExecutorFactoryProviderConfig;
-import org.keycloak.protocol.oauth2.cimd.provider.AbstractPersistentClientIdMetadataDocumentProvider;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.JsonWebToken;
@@ -808,72 +807,25 @@ public class ClientIdMetadataDocumentTest {
     }
 
     @Test
-    public void testClientIdMetadataDocumentExecutorMaxCimdClients() throws Exception {
-        // register profiles with maxCimdClients = 1
+    public void testClientIdMetadataDocumentExecutorDefaultMaxClients() throws Exception {
+        // register profiles with default max-clients (factory global setting, default 1000)
         ClientIdUriSchemeCondition.Configuration conditionConfig = new ClientIdUriSchemeCondition.Configuration();
         conditionConfig.setClientIdUriSchemes(List.of("http", "https"));
         conditionConfig.setTrustedDomains(List.of("*.example.com", "localhost"));
         ClientIdMetadataDocumentExecutor.Configuration executorConfig = new ClientIdMetadataDocumentExecutor.Configuration();
         executorConfig.setTrustedDomains(List.of("*.example.com", "localhost"));
         executorConfig.setAllowHttpScheme(true);
-        executorConfig.setMaxCimdClients(1);
         updatePolicy(conditionConfig, executorConfig);
 
-        // Pre-occupy the CIMD client slot by creating a dummy client with the marker attribute via admin API.
-        // This simulates a realm that already has the maximum number of CIMD-persisted clients.
-        ClientRepresentation dummyCimdClient = new ClientRepresentation();
-        dummyCimdClient.setClientId("dummy-cimd-client");
-        dummyCimdClient.setAttributes(Map.of(
-                AbstractPersistentClientIdMetadataDocumentProvider.CIMD_PERSISTED_CLIENT, "true"));
-        realm.admin().clients().create(dummyCimdClient);
-
-        // attempt to create a CIMD client via authorization request: should fail because limit is 1
-        assertLoginAndError(AbstractPersistentClientIdMetadataDocumentProvider.ERR_CIMD_CLIENTS_LIMIT_REACHED);
-
-        // remove the dummy CIMD client to free a slot
-        List<ClientRepresentation> dummyClients = realm.admin().clients().findByClientId("dummy-cimd-client");
-        Assertions.assertEquals(1, dummyClients.size());
-        realm.admin().clients().get(dummyClients.get(0).getId()).remove();
-
-        // now CIMD client creation should succeed
+        // CIMD client registration should succeed because the realm is well below the default max (1000)
         String code = loginUserAndGetCode(true);
         String signedJwt = createSignedRequestToken();
         AccessTokenResponse tokenResponse = oauth.client(CLIENT_ID).accessTokenRequest(code).signedJwt(signedJwt).send();
         oauth.verifyToken(tokenResponse.getAccessToken());
 
-        // check that the CIMD client was persisted with the marker attribute
+        // check the persisted client
         ClientRepresentation clientRepresentation = findByClientIdByAdmin();
         Assertions.assertNotNull(clientRepresentation);
-        Assertions.assertEquals("true", clientRepresentation.getAttributes().get(
-                AbstractPersistentClientIdMetadataDocumentProvider.CIMD_PERSISTED_CLIENT));
-
-        // delete the persisted client
-        logoutAndDelete(clientRepresentation.getId(), tokenResponse.getIdToken());
-    }
-
-    @Test
-    public void testClientIdMetadataDocumentExecutorMaxCimdClientsUnlimited() throws Exception {
-        // register profiles with maxCimdClients = 0 (unlimited, default behavior)
-        ClientIdUriSchemeCondition.Configuration conditionConfig = new ClientIdUriSchemeCondition.Configuration();
-        conditionConfig.setClientIdUriSchemes(List.of("http", "https"));
-        conditionConfig.setTrustedDomains(List.of("*.example.com", "localhost"));
-        ClientIdMetadataDocumentExecutor.Configuration executorConfig = new ClientIdMetadataDocumentExecutor.Configuration();
-        executorConfig.setTrustedDomains(List.of("*.example.com", "localhost"));
-        executorConfig.setAllowHttpScheme(true);
-        executorConfig.setMaxCimdClients(0);
-        updatePolicy(conditionConfig, executorConfig);
-
-        // CIMD client should succeed since max is unlimited
-        String code = loginUserAndGetCode(true);
-        String signedJwt = createSignedRequestToken();
-        AccessTokenResponse tokenResponse = oauth.client(CLIENT_ID).accessTokenRequest(code).signedJwt(signedJwt).send();
-        oauth.verifyToken(tokenResponse.getAccessToken());
-
-        // check that the CIMD client was persisted with the marker attribute
-        ClientRepresentation clientRepresentation = findByClientIdByAdmin();
-        Assertions.assertNotNull(clientRepresentation);
-        Assertions.assertEquals("true", clientRepresentation.getAttributes().get(
-                AbstractPersistentClientIdMetadataDocumentProvider.CIMD_PERSISTED_CLIENT));
 
         // delete the persisted client
         logoutAndDelete(clientRepresentation.getId(), tokenResponse.getIdToken());

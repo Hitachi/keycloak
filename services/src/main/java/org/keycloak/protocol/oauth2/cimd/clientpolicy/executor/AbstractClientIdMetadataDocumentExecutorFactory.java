@@ -45,14 +45,12 @@ public abstract class AbstractClientIdMetadataDocumentExecutorFactory
     public static final String REQUIRED_PROPERTIES = "cimd-required-properties";
     public static final String RESTRICT_SAME_DOMAIN = "cimd-restrict-same-domain";
 
-    // Realm-level cap on CIMD-persisted clients
-    public static final String MAX_CIMD_CLIENTS = "cimd-max-clients";
-
     // Factory Global Settings
     public static final String CONFIG_CIMD_PROVIDER_NAME = "cimd-provider-name";
     public static final String CONFIG_MIN_CACHE_TIME = "min-cache-time";
     public static final String CONFIG_MAX_CACHE_TIME = "max-cache-time";
     public static final String CONFIG_UPPER_LIMIT_METADATA_BYTES = "upper-limit-metadata-bytes";
+    public static final String CONFIG_MAX_CLIENTS = "max-clients";
 
     protected ClientIdMetadataDocumentExecutorFactoryProviderConfig providerConfig;
 
@@ -116,17 +114,6 @@ public abstract class AbstractClientIdMetadataDocumentExecutorFactory
                 ProviderConfigProperty.MULTIVALUED_STRING_TYPE,
                 null);
         configProperties.add(property);
-
-        // Realm-level cap on CIMD-persisted clients
-        property = new ProviderConfigProperty(
-                MAX_CIMD_CLIENTS,
-                "Max CIMD-persisted clients",
-                "The maximum number of CIMD-persisted clients allowed per realm. " +
-                "If the number of CIMD-persisted clients reaches this limit, new CIMD client registration is rejected. " +
-                "Set to 0 (default) for unlimited.",
-                ProviderConfigProperty.STRING_TYPE,
-                "0");
-        configProperties.add(property);
     }
 
     @Override
@@ -158,6 +145,15 @@ public abstract class AbstractClientIdMetadataDocumentExecutorFactory
                 .type("int")
                 .helpText("Client metadata upper limit in byte for the CIMD.")
                 .defaultValue(ClientIdMetadataDocumentExecutorFactoryProviderConfig.DEFAULT_CONFIG_UPPER_LIMIT_METADATA_BYTES)
+                .add()
+
+                .property()
+                .name(CONFIG_MAX_CLIENTS)
+                .type("int")
+                .helpText("Max number of clients per realm for the CIMD. When the number of existing clients in a realm reaches this limit, " +
+                        "an authorization request with a CIMD client_id is rejected. " +
+                        "0 means unlimited.")
+                .defaultValue(ClientIdMetadataDocumentExecutorFactoryProviderConfig.DEFAULT_CONFIG_MAX_CLIENTS)
                 .add()
 
                 .build();
